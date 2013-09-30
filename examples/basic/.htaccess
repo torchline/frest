@@ -1,0 +1,14 @@
+Options +FollowSymLinks  
+Options -MultiViews
+    
+# This is just some hackiness to get urls routed and cleaned properly.
+# Normally a PHP framework will do this for you. This is just a raw example.
+<IfModule mod_rewrite.c>
+    RewriteEngine On  
+  
+    RewriteCond %{SCRIPT_FILENAME} !-d  
+    RewriteCond %{SCRIPT_FILENAME} !-f 
+  
+    RewriteRule ^users$ ./users.php$1 [L]
+    RewriteRule ^users/(\d+)*$ ./users.php?__id=$1 [L]
+</IfModule>
