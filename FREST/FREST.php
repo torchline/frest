@@ -35,13 +35,17 @@ class FREST {
 	protected $suppressHTTPStatusCodes = FALSE;
 	
 	/**
-	 * @param FRConfig $config
+	 * @param FRConfig $config defaults to FRConfig::fromFile('config.php')
 	 * @param string $resourceName The name of the resource for the request (defaults to base name of request url)
 	 * @param int|string $resourceID The ID of the resource for the request (defaults to base name of request url if it is an int)
 	 * @param array $parameters A list of key-value parameters to pass for the request (defaults to $_GET or $_POST) 
+	 * @param int $requestMethod The method (get, post, put, delete) defined by the FRMethod enum of the request (defaults to REQUEST_METHOD)
 	 * @param string $resourceFunctionName Custom function to be invoked on resource
 	 */
-	public function __construct($config, $resourceName = NULL, $resourceID = NULL, $parameters = NULL, $resourceFunctionName = NULL) {
+	public function __construct($config = NULL, $resourceName = NULL, $resourceID = NULL, $parameters = NULL, $requestMethod = NULL, $resourceFunctionName = NULL) {
+		if (!isset($config)) {
+			$config = FRConfig::fromFile();
+		}
 		$this->config = $config;
 		
 		// determine resource name, id, and function
@@ -93,8 +97,13 @@ class FREST {
 		}
 		
 		// determine request method
-		$actualMethodString = $_SERVER['REQUEST_METHOD'];
-		$actualMethod = $this->getMethodFromString($actualMethodString);
+		if (!isset($requestMethod)) {
+			$actualMethodString = $_SERVER['REQUEST_METHOD'];
+			$actualMethod = $this->getMethodFromString($actualMethodString);
+		}
+		else {
+			$actualMethod = $requestMethod;
+		}
 
 		// check for forced method
 		switch ($actualMethod) {
@@ -134,7 +143,8 @@ class FREST {
 					$parameters = $_POST;
 					break;
 				default:
-					$this->error = new FRErrorResult(FRErrorResult::InvalidMethod, 400, "Method '{$actualMethodString}");
+					$methodString = FRMethod::getString($actualMethod);
+					$this->error = new FRErrorResult(FRErrorResult::InvalidMethod, 400, "Method '{$methodString}");
 					return;
 					break;
 			}
@@ -180,6 +190,23 @@ class FREST {
 			return;
 		}
 	}
+	
+	public static function automatic() {
+		return new FREST();
+	}
+	
+	public static function withID($id) {
+		return new FREST(NULL, NULL, $id);
+	}
+	
+	public static function outputWithID($id) {
+		self::withID($id)->outputResult();
+	}
+	
+	public static function outputAutomatic() {
+		self::automatic()->outputResult();
+	}
+		
 
 	/**
 	 * Outputs the result of the request
@@ -198,7 +225,7 @@ class FREST {
 		/** @var FRRequest $request */
 		$request = $this->request;
 		$result = $request->generateResult();
-		$result->output($this, $format, $inline);
+		return $result->output($this, $format, $inline);
 	}
 	
 	
@@ -220,7 +247,7 @@ class FREST {
 
 		// verify resource existence
 		if (!file_exists($resourcePath)) {
-			$error = new FRErrorResult(FRErrorResult::Config, 500, "Cannot find file for resource '{$resourceName}'");
+			$error = new FRErrorResult(FRErrorResult::Config, 500, "File for resource '{$resourceName}' not found at '{$resourcePath}'");
 			return NULL;
 		}
 
@@ -231,7 +258,7 @@ class FREST {
 			return NULL;
 		}
 		if (!is_subclass_of($resourceClassName, 'FRResource')) {
-			$error = new FRErrorResult(FRErrorResult::Config, 500, "Class '{$resourceClassName}' is not a subclass of resources");
+			$error = new FRErrorResult(FRErrorResult::Config, 500, "Class '{$resourceClassName}' is not a subclass of FRResource");
 			return NULL;
 		}
 

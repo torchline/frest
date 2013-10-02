@@ -45,22 +45,6 @@ class FRConfig {
 	protected $resourceDirectory;
 
 	/**
-	 * The directory in which all custom resources files are held.
-	 *
-	 * Files here are expected to be named the same as their
-	 * associated resources with a capitalized first letter.
-	 *
-	 * Example:
-	 *
-	 *  Filename: Users.php
-	 *  Class: Users extends resources
-	 *  Resource: users
-	 *
-	 * @var string
-	 */
-	protected $controllerDirectory;
-
-	/**
 	 * A PDO object used to connect to the database holding the tables
 	 * for the resources used in the API.
 	 *
@@ -87,8 +71,62 @@ class FRConfig {
 		$this->setPDO($pdo);
 	}
 	
+	public static function withPDO($pdo) {
+		return new FRConfig($pdo);
+	}
 	
+	public static function fromFile($path = 'config.php') {
+		if (!file_exists($path)) {
+			throw new Exception("No config file at '{$path}'", 500);
+		}
+		
+		include_once($path);
+		
+		if (!isset($config)) {
+			throw new Exception("No config variable found in config file at '{$path}'", 500);
+		}
+		
+		// PDO
+		if (!isset($config['db'])) {
+			throw new Exception("No db config settings specified in config file at '{$path}'", 500);
+		}
+		$pdo = self::pdoFromConfigArray($config['db']);
 
+		// create FRConfig
+		$frestConfig = new FRConfig($pdo);
+		
+		if (isset($config['authDB'])) {
+			$authPDO = self::pdoFromConfigArray($config['authDB']);
+			$frestConfig->setAuthPDO($authPDO);
+		}
+
+		if (isset($config['checkResourceValidity'])) {
+			$frestConfig->setCheckResourceValidity($config['checkResourceValidity']);
+		}
+
+		if (isset($config['enableForcedMethod'])) {
+			$frestConfig->setEnableForcedMethod($config['enableForcedMethod']);
+		}
+
+		if (isset($config['resourceDirectory'])) {
+			$frestConfig->setResourceDirectory($config['resourceDirectory']);
+		}
+
+		return $frestConfig;
+	}
+	
+	
+	
+	private static function pdoFromConfigArray($configArray) {
+		$dbType = $configArray['type'];
+		$dbName = $configArray['name'];
+		$dbHost = $configArray['host'];
+		$dbUsername = $configArray['username'];
+		$dbPassword = $configArray['password'];
+		
+		return new PDO("{$dbType}:dbname={$dbName};host={$dbHost}", $dbUsername, $dbPassword);
+	}
+	
 	
 	/**
 	 * @return string
