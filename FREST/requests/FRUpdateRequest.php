@@ -40,6 +40,8 @@ class FRUpdateRequest extends FRRequest {
 	}
 
 	public function generateResult($forceRegen = FALSE) {
+		$this->frest->startTimingForLabel(FRTiming::PROCESSING, 'update');
+
 		$otherResult = parent::generateResult($forceRegen);
 		if (isset($otherResult)) {
 			return $otherResult;
@@ -57,9 +59,13 @@ class FRUpdateRequest extends FRRequest {
 		/** @var FRFieldSetting $idFieldSetting */
 		$this->resource->getIDField($idFieldSetting); // populates
 
+		$this->frest->stopTimingForLabel(FRTiming::PROCESSING, 'update');
+
 		$i = 0;
 		/** @var FRTableUpdateSpec $tableUpdateSpec */
 		foreach ($this->tableUpdateSpecs as $tableUpdateSpec) {
+			$this->frest->startTimingForLabel(FRTiming::PROCESSING, 'update');
+
 			$table = $tableUpdateSpec->getTable();
 			$queryParameterSpecs = $tableUpdateSpec->getQueryParameterSpecs();
 
@@ -71,6 +77,9 @@ class FRUpdateRequest extends FRRequest {
 			}
 
 			$assignmentString = implode(',', $assignmentStringList);
+			
+			$this->frest->stopTimingForLabel(FRTiming::PROCESSING, 'update');
+			$this->frest->startTimingForLabel(FRTiming::SQL, 'update');
 
 			$sql = "UPDATE {$table} SET {$assignmentString} WHERE {$idFieldName} = :_id";
 
@@ -100,12 +109,18 @@ class FRUpdateRequest extends FRRequest {
 				return $error;
 			}
 
+			$this->frest->stopTimingForLabel(FRTiming::SQL, 'update');
+
 			$i++;
 		}
+
+		$this->frest->startTimingForLabel(FRTiming::SQL, 'update');
 
 		if ($isPerformingTransaction) {
 			$pdo->commit();
 		}
+
+		$this->frest->stopTimingForLabel(FRTiming::SQL, 'update');
 
 		$this->result = new FRUpdateResult();
 

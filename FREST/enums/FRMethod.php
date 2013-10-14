@@ -34,4 +34,29 @@ final class FRMethod {
 		
 		return NULL;
 	}
+
+	/**
+	 * @param $string
+	 * @return int
+	 */
+	public static function fromString($string) {
+		$string = strtoupper($string);
+
+		switch ($string) {
+			case 'GET':
+				return FRMethod::GET;
+				break;
+			case 'POST':
+				return FRMethod::POST;
+				break;
+			case 'PUT':
+				return FRMethod::PUT;
+				break;
+			case 'DELETE':
+				return FRMethod::DELETE;
+				break;
+		}
+
+		return -1;
+	}
 }

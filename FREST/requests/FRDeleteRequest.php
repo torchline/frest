@@ -32,6 +32,8 @@ class FRDeleteRequest extends FRRequest {
 	}
 
 	public function generateResult($forceRegen = FALSE) {
+		$this->frest->startTimingForLabel(FRTiming::PROCESSING, 'delete');
+
 		$otherResult = parent::generateResult($forceRegen);
 		if (isset($otherResult)) {
 			return $otherResult;
@@ -48,15 +50,17 @@ class FRDeleteRequest extends FRRequest {
 			$pdo->beginTransaction();
 			$isPerformingTransaction = TRUE;
 		}
-		
+
+		$this->frest->stopTimingForLabel(FRTiming::PROCESSING, 'delete');
+
 		/** @var FRTableDeleteSpec $tableDeleteSpec */
 		foreach ($this->tableDeleteSpecs as $tableDeleteSpec) {
 			$table = $tableDeleteSpec->getTable();
-
 			$idFieldName = $this->resource->getIDFieldForTable($table);
-			
+
+			$this->frest->startTimingForLabel(FRTiming::SQL, 'delete');
+
 			$sql = "DELETE FROM {$table} WHERE {$idFieldName} = :_id";
-			
 			$deleteStmt = $pdo->prepare($sql);
 			
 			$deleteStmt->bindValue(
@@ -73,14 +77,20 @@ class FRDeleteRequest extends FRRequest {
 				$error = new FRErrorResult(FRErrorResult::SQLError, 500, 'Error deleting from database. '.implode(' ', $deleteStmt->errorInfo()));
 				return $error;
 			}
+
+			$this->frest->stopTimingForLabel(FRTiming::SQL, 'delete');
 		}
+
+		$this->frest->startTimingForLabel(FRTiming::SQL, 'delete');
 
 		if ($isPerformingTransaction) {
 			$pdo->commit();
 		}
-		
+
+		$this->frest->stopTimingForLabel(FRTiming::SQL, 'delete');
+
 		$this->result = new FRDeleteResult();
-		
+
 		return $this->result;
 	}
 

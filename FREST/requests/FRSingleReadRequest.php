@@ -8,7 +8,7 @@ require_once(dirname(__FILE__).'/../results/FRSingleReadResult.php');
 
 class FRSingleReadRequest extends FRReadRequest {
 	
-	public function setupWithResource($resource, &$error = NULL) {
+	public function setupWithResource($resource, &$error = NULL) {		
 		parent::setupWithResource($resource, $error);
 		if (isset($error)) {
 			return $error;
@@ -32,6 +32,8 @@ class FRSingleReadRequest extends FRReadRequest {
 	}
 	
 	public function generateResult($forceRegen = FALSE) {
+		$this->frest->startTimingForLabel(FRTiming::PROCESSING, 'singleread');
+
 		$otherResult = parent::generateResult($forceRegen);
 		if (isset($otherResult)) {
 			return $otherResult;
@@ -47,8 +49,6 @@ class FRSingleReadRequest extends FRReadRequest {
 			return $error;
 		}
 
-		$pdo = $this->frest->getConfig()->getPDO();		
-
 		$joinString = $this->generateJoinString($this->resource, $this->joinSpecs, $error);
 		if (isset($error)) {
 			return $error;
@@ -57,6 +57,11 @@ class FRSingleReadRequest extends FRReadRequest {
 		$idField = $this->resource->getIDField();
 		$tableWithID = $this->resource->getTableForField($idField);
 		$tableAbbrvWithID = $this->getTableAbbreviation($tableWithID);
+
+		$this->frest->stopTimingForLabel(FRTiming::PROCESSING, 'singleread');
+		$this->frest->startTimingForLabel(FRTiming::SQL, 'singleread');
+
+		$pdo = $this->frest->getConfig()->getPDO();
 
 		$sql = "SELECT {$fieldString} FROM {$tablesToReadString}{$joinString} WHERE {$tableAbbrvWithID}.{$idField} = :id LIMIT 1";
 		$stmt = $pdo->prepare($sql);
@@ -74,14 +79,16 @@ class FRSingleReadRequest extends FRReadRequest {
 		if ($resultsCount == 0) {
 			return new FRErrorResult(FRErrorResult::NoResults, 404, '');
 		}
-		
+
+		$this->frest->stopTimingForLabel(FRTiming::SQL, 'singleread');
+
 		$this->parseObjects($this->resource, $objects, $this->readSettings, $error);
 		if (isset($error)) {
 			return $error;
 		}
 		
 		$this->result = new FRSingleReadResult($objects[0]);
-		
+
 		return $this->result;
 	}
 

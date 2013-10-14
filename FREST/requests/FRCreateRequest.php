@@ -44,6 +44,8 @@ class FRCreateRequest extends FRRequest {
 	
 	
 	public function generateResult($forceRegen = FALSE) {
+		$this->frest->startTimingForLabel(FRTiming::PROCESSING, 'create');
+
 		$otherResult = parent::generateResult($forceRegen);
 		if (isset($otherResult)) {
 			return $otherResult;
@@ -57,10 +59,14 @@ class FRCreateRequest extends FRRequest {
 			$pdo->beginTransaction();
 			$isPerformingTransaction = TRUE;
 		}
-		
+
+		$this->frest->stopTimingForLabel(FRTiming::PROCESSING, 'create');
+
 		$i = 0;
 		/** @var FRTableCreateSpec $tableCreateSpec */
 		foreach ($this->tableCreateSpecs as $tableCreateSpec) {
+			$this->frest->startTimingForLabel(FRTiming::PROCESSING, 'create');
+
 			$table = $tableCreateSpec->getTable();
 			$queryParameterSpecs = $tableCreateSpec->getQueryParameterSpecs();
 
@@ -101,6 +107,9 @@ class FRCreateRequest extends FRRequest {
 			$fieldsString = implode(',', $fieldStringList);
 			$parametersString = implode(',', $parameterStringList);
 
+			$this->frest->stopTimingForLabel(FRTiming::PROCESSING, 'create');
+			$this->frest->startTimingForLabel(FRTiming::SQL, 'create');
+
 			$sql = "INSERT INTO {$table} ($fieldsString) VALUES ({$parametersString})";
 
 			$createStmt = $pdo->prepare($sql);
@@ -127,12 +136,19 @@ class FRCreateRequest extends FRRequest {
 				$createdResourceID = isset($this->resourceID) ? $this->resourceID : $pdo->lastInsertID();
 			}
 
+			$this->frest->stopTimingForLabel(FRTiming::SQL, 'create');
+
 			$i++;
 		}
 
+		$this->frest->startTimingForLabel(FRTiming::SQL, 'create');
+		
 		if ($isPerformingTransaction) {
 			$pdo->commit();
 		}
+		
+		$this->frest->stopTimingForLabel(FRTiming::SQL, 'create');
+		$this->frest->startTimingForLabel(FRTiming::POST_PROCESSING, 'create');
 
 		if (!isset($createdResourceID)) {
 			$error = new FRErrorResult(FRErrorResult::SQLError, 500, 'No ID generated or set for the created resource');
@@ -140,6 +156,8 @@ class FRCreateRequest extends FRRequest {
 		}
 		
 		$this->result = new FRCreateResult($createdResourceID);
+
+		$this->frest->stopTimingForLabel(FRTiming::POST_PROCESSING, 'create');
 
 		return $this->result;
 	}

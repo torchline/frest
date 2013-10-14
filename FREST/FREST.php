@@ -4,6 +4,7 @@ require_once(dirname(__FILE__).'/../SNOAuth2/SNOAuth2_ClientCredentials.php');
 require_once(dirname(__FILE__).'/FRConfig.php');
 require_once(dirname(__FILE__).'/resources/FRResource.php');
 require_once(dirname(__FILE__).'/enums/FRMethod.php');
+require_once(dirname(__FILE__).'/enums/FRTiming.php');
 
 require_once(dirname(__FILE__) . '/requests/FRSingleReadRequest.php');
 require_once(dirname(__FILE__) . '/requests/FRMultiReadRequest.php');
@@ -17,6 +18,12 @@ require_once(dirname(__FILE__) . '/requests/FRDeleteRequest.php');
 class FREST {
 
 	const FORCED_NULL = '__NULL__';
+	
+	/** @var stdClass */
+	protected $timingObject;
+	
+	/** @var array */
+	protected $startTimes;
 	
 	/** @var FRConfig */
 	protected $config;
@@ -45,11 +52,15 @@ class FREST {
 	 * @param string $resourceFunctionName Custom function to be invoked on resource
 	 */
 	public function __construct($config = NULL, $resourceName = NULL, $resourceID = NULL, $parameters = NULL, $requestMethod = NULL, $resourceFunctionName = NULL) {
+		$this->startTimingForLabel(FRTiming::TOTAL, 'frest');
+
 		if (!isset($config)) {
-			$config = FRConfig::fromFile();
+			$config = FRConfig::fromFile($this);
 		}
 		$this->config = $config;
-		
+
+		$this->startTimingForLabel(FRTiming::SETUP, 'frest');
+
 		// determine resource name, id, and function
 		if (!isset($resourceName) || !isset($resourceID)) {
 			$url = $_SERVER['REQUEST_URI'];
@@ -101,7 +112,7 @@ class FREST {
 		// determine request method
 		if (!isset($requestMethod)) {
 			$actualMethodString = $_SERVER['REQUEST_METHOD'];
-			$actualMethod = $this->getMethodFromString($actualMethodString);
+			$actualMethod = FRMethod::fromString($actualMethodString);
 		}
 		else {
 			$actualMethod = $requestMethod;
@@ -113,7 +124,7 @@ class FREST {
 			case FRMethod::POST:
 				if ($this->config->getEnableForcedMethod() && isset($_REQUEST['method'])) {
 					$forcedMethodString = $_REQUEST['method'];
-					$forcedMethod = $this->getMethodFromString($forcedMethodString);
+					$forcedMethod = FRMethod::fromString($forcedMethodString);
 
 					// if method is valid
 					if ($forcedMethod <= 0) {
@@ -159,7 +170,7 @@ class FREST {
 				$this->suppressHTTPStatusCodes = $castedValue;
 			}
 		}
-		
+
 		switch ($this->method) {
 			case FRMethod::GET: // read
 				if (isset($resourceID) && $resourceID != self::FORCED_NULL) {
@@ -185,12 +196,18 @@ class FREST {
 			$this->error = $error;
 			return;
 		}
+
+		$this->stopTimingForLabel(FRTiming::SETUP, 'frest');
+		$this->startTimingForLabel(FRTiming::PROCESSING, 'frest');
 		
 		$this->request->setupWithResource($this->resource, $error);	
 		if (isset($error)) {
 			$this->error = $error;
 			return;
 		}
+
+		$this->stopTimingForLabel(FRTiming::PROCESSING, 'frest');
+		$this->stopTimingForLabel(FRTiming::TOTAL, 'frest');
 	}
 	
 	public static function automatic() {
@@ -225,6 +242,8 @@ class FREST {
 	 * @return mixed
 	 */
 	public function outputResult($format = FROutputFormat::JSON, $inline = FALSE) {
+		$this->startTimingForLabel('total', 'frest');
+
 		if (isset($this->error)) {
 			return $this->error->output($this, $format, $inline);
 		}
@@ -232,7 +251,16 @@ class FREST {
 		/** @var FRRequest $request */
 		$request = $this->request;
 		$result = $request->generateResult();
-		return $result->output($this, $format, $inline);
+
+		$this->stopTimingForLabel('total', 'frest');
+
+		$output = $result->output($this, $format, $inline);
+
+		if (!$inline) {
+			die();
+		}
+		
+		return $output;
 	}
 	
 	
@@ -288,34 +316,77 @@ class FREST {
 		
 		return $resource;
 	}
-	
-	
-	private function getMethodFromString($methodString) {
-		$methodString = strtoupper($methodString);
-		
-		switch ($methodString) {
-			case 'GET':
-				return FRMethod::GET;
-				break;
-			case 'POST':
-				return FRMethod::POST;
-				break;
-			case 'PUT':
-				return FRMethod::PUT;
-				break;
-			case 'DELETE':
-				return FRMethod::DELETE;
-				break;
+
+	/**
+	 * @param string $label
+	 * @param string $instance
+	 */
+	public function startTimingForLabel($label, $instance) {
+		if (!isset($this->startTimes[$label])) {
+			$this->startTimes[$label]['instances'] = array();
+			$this->startTimes[$label]['time'] = 0;
 		}
 		
-		return -1;
+		if (count($this->startTimes[$label]['instances']) == 0) { // has no currently running timers for this label
+			$this->startTimes[$label]['time'] = $this->getCurrentTime();
+			//echo "start $label-$instance\n";
+		}
+		else {
+			//echo "add $label-$instance\n";
+		}
+
+		$this->startTimes[$label]['instances'][$instance] = $instance;
 	}
 
+	/**
+	 * @param string $label
+	 * @param string $instance
+	 */
+	public function stopTimingForLabel($label, $instance) {
+		if (!isset($this->timingObject)) {
+			$this->timingObject = new stdClass;
+		}
+		
+		if (!isset($this->startTimes[$label]['instances'][$instance])) {
+			die("can't stop timing for '{$label}-{$instance}' because timing hasn't started with that label-instance yet");
+		}
+		//echo "stop $label-$instance\n";
+		unset($this->startTimes[$label]['instances'][$instance]);
+		
+		if (!isset($this->startTimes[$label]['instances']) || count($this->startTimes[$label]['instances']) == 0) { // all timers for this label are done
+			$startTime = $this->startTimes[$label]['time'];
+			$timeDuration = $this->getCurrentTime() - $startTime;
+
+			if (isset($this->timingObject->$label)) {
+				$this->timingObject->$label += $timeDuration;
+			}
+			else {
+				$this->timingObject->$label = $timeDuration;
+			}
+		}
+	}
+
+	/**
+	 * @return float
+	 */
+	protected function getCurrentTime() {
+		return microtime() * 1000;
+	}
 	
-	
-	
-	
-	
+
+	/**
+	 * @return \stdClass
+	 */
+	public function getTimingObject() {
+		$timingObject = $this->timingObject;
+		
+		// format times
+		foreach ($timingObject as $property=>$value) {
+			$timingObject->$property = number_format($value, 3) . 'ms';
+		}
+		
+		return $timingObject;
+	}
 	
 	/**
 	 * @return \FRConfig

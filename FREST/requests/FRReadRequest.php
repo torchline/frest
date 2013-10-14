@@ -585,12 +585,16 @@ abstract class FRReadRequest extends FRRequest {
 	 * @param string $parentAlias
 	 * @param FRErrorResult $error
 	 */
-	protected function parseObjects($resource, &$objects, $readSettings, $parentAlias = NULL, &$error = NULL) {		
+	protected function parseObjects($resource, &$objects, $readSettings, $parentAlias = NULL, &$error = NULL) {				
 		// stores the read settings that are just an FRComputedReadSetting
 		$computedReadSettings = array();
+		
+		$timerInstance = isset($parentAlias) ? $parentAlias.'-parse' : 'parse';
 
 		/** @var FRReadSetting $readSetting */
 		foreach ($readSettings as $readSetting) {
+			$this->frest->startTimingForLabel(FRTiming::POST_PROCESSING, $timerInstance);
+
 			$alias = $readSetting->getAlias();
 			$partialSubKey = isset($parentAlias) ? "{$parentAlias}.{$alias}" : $alias;
 
@@ -627,6 +631,8 @@ abstract class FRReadRequest extends FRRequest {
 						$requestParameters[$field] = $parameter;
 					}
 
+					$this->frest->stopTimingForLabel(FRTiming::POST_PROCESSING, $timerInstance);
+
 					$request = new FRMultiReadRequest($this->frest, $requestParameters);
 					$request->setupWithResource($loadedResource, $error);
 					if (isset($error)) {
@@ -635,12 +641,13 @@ abstract class FRReadRequest extends FRRequest {
 					
 					/** @var FRMultiReadResult $result */
 					$result = $request->generateResult();
-					
 					if ($result instanceof FRErrorResult) {						
 						$error = $result;
 						return;
 					}
-					
+
+					$this->frest->startTimingForLabel(FRTiming::POST_PROCESSING, $timerInstance);
+
 					$object->$alias = $result->getResourceObjects();
 				}
 			}
@@ -745,7 +752,11 @@ abstract class FRReadRequest extends FRRequest {
 					$object->$alias = $value;
 				}
 			}
+			
+			$this->frest->stopTimingForLabel(FRTiming::POST_PROCESSING, $timerInstance);
 		}
+
+		$this->frest->startTimingForLabel(FRTiming::POST_PROCESSING, $timerInstance);
 		
 		// use first object as reference to see what aliases have been set so far (used for computed aliases below)
 		$oldObjects = reset($objects);
@@ -850,6 +861,8 @@ abstract class FRReadRequest extends FRRequest {
 				}
 			}
 		}
+
+		$this->frest->stopTimingForLabel(FRTiming::POST_PROCESSING, $timerInstance);
 	}
 
 	

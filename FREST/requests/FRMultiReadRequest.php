@@ -58,6 +58,8 @@ class FRMultiReadRequest extends FRReadRequest {
 	}
 	
 	public function generateResult($forceRegen = FALSE) {
+		$this->frest->startTimingForLabel(FRTiming::PROCESSING, 'multiread');
+
 		$otherResult = parent::generateResult($forceRegen);
 		if (isset($otherResult)) {
 			return $otherResult;
@@ -105,12 +107,15 @@ class FRMultiReadRequest extends FRReadRequest {
 			return $error;
 		}
 
+		$this->frest->stopTimingForLabel(FRTiming::PROCESSING, 'multiread');
+		$this->frest->startTimingForLabel(FRTiming::SQL, 'multiread');
+
 		$pdo = $this->frest->getConfig()->getPDO();
 
 		// SQL
 		$sql = "SELECT {$fieldString} FROM {$tablesToReadString} {$joinsString} {$conditionString} {$orderBysString} LIMIT :_offset, :_limit";
 		$countSQL = "SELECT COUNT(0) AS Count FROM {$tablesToReadString} {$joinsString} {$conditionString}";
-		//echo "$sql\n\n";
+
 		$resultsStmt = $pdo->prepare($sql);
 		$countStmt = $pdo->prepare($countSQL);
 
@@ -148,13 +153,15 @@ class FRMultiReadRequest extends FRReadRequest {
 		$countResult = $countStmt->fetchAll(PDO::FETCH_ASSOC);
 		$count = intval($countResult[0]['Count']);
 
+		$this->frest->stopTimingForLabel(FRTiming::SQL, 'multiread');
+
 		$this->parseObjects($this->resource, $objects, $this->readSettings, $error);
 		if (isset($error)) {
 			return $error;
 		}
 
 		$this->result = new FRMultiReadResult($objects, $limit, $offset, $count);
-			
+
 		return $this->result;
 	}
 	

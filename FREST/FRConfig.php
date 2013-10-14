@@ -6,6 +6,13 @@
 class FRConfig {
 	
 	/**
+	 * Outputs miscellaneous timing data alongside the data
+	 *
+	 * @var bool (default: FALSE)
+	 */
+	protected $showDiagnosticData = FALSE;
+
+	/**
 	 * Runs a check against each resource as it is loaded to ensure
 	 * its settings are valid.
 	 *
@@ -74,14 +81,22 @@ class FRConfig {
 	public static function withPDO($pdo) {
 		return new FRConfig($pdo);
 	}
-	
-	public static function fromFile($path = 'config.php') {
+
+	/**
+	 * @param FREST $frest
+	 * @param string $path
+	 * @return FRConfig
+	 * @throws Exception
+	 */
+	public static function fromFile($frest, $path = 'config.php') {
+		$frest->startTimingForLabel(FRTiming::SETUP, 'config');
+		
 		if (!file_exists($path)) {
 			throw new Exception("No config file at '{$path}'", 500);
 		}
 		
 		include($path);
-		
+				
 		if (!isset($config)) {
 			throw new Exception("No config variable found in config file at '{$path}'", 500);
 		}
@@ -90,7 +105,14 @@ class FRConfig {
 		if (!isset($config['db'])) {
 			throw new Exception("No db config settings specified in config file at '{$path}'", 500);
 		}
+
+		$frest->stopTimingForLabel(FRTiming::SETUP, 'config');
+		$frest->startTimingForLabel(FRTiming::SQL, 'config');
+		
 		$pdo = self::pdoFromConfigArray($config['db']);
+		
+		$frest->stopTimingForLabel(FRTiming::SQL, 'config');
+		$frest->startTimingForLabel(FRTiming::SETUP, 'config');
 
 		// create FRConfig
 		$frestConfig = new FRConfig($pdo);
@@ -98,6 +120,10 @@ class FRConfig {
 		if (isset($config['authDB'])) {
 			$authPDO = self::pdoFromConfigArray($config['authDB']);
 			$frestConfig->setAuthPDO($authPDO);
+		}
+
+		if (isset($config['showDiagnosticData'])) {
+			$frestConfig->setShowDiagnosticData($config['showDiagnosticData']);
 		}
 
 		if (isset($config['checkResourceValidity'])) {
@@ -112,11 +138,11 @@ class FRConfig {
 			$frestConfig->setResourceDirectory($config['resourceDirectory']);
 		}
 
+		$frest->stopTimingForLabel(FRTiming::SETUP, 'config');
+
 		return $frestConfig;
 	}
-	
-	
-	
+
 	private static function pdoFromConfigArray($configArray) {
 		$dbType = $configArray['type'];
 		$dbName = $configArray['name'];
@@ -163,6 +189,22 @@ class FRConfig {
 		return $this->authPDO;
 	}
 
+	/**
+	 * @return boolean
+	 */
+	public function getShowDiagnosticData()
+	{
+		return $this->showDiagnosticData;
+	}
+
+	/**
+	 * @param boolean $showDiagnosticData
+	 */
+	public function setShowDiagnosticData($showDiagnosticData)
+	{
+		$this->showDiagnosticData = $showDiagnosticData;
+	}
+	
 	/**
 	 * @param string $resourceDirectory
 	 */

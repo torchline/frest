@@ -18,12 +18,6 @@ abstract class FRResult {
 	/** @var FREST */
 	protected $frest;
 
-	function __construct($frest, $httpStatusCode)
-	{
-		$this->frest = $frest;
-		$this->httpStatusCode = $httpStatusCode;
-	}
-
 
 	/**
 	 * @return stdClass
@@ -39,6 +33,12 @@ abstract class FRResult {
 	 */
 	public function output($frest, $format = FROutputFormat::JSON, $inline = FALSE) {
 		$this->outputObject = $this->generateOutputObject();
+
+		if ($frest->getConfig()->getShowDiagnosticData()) {
+			$this->outputObject->diagnostics = new stdClass;
+			$this->outputObject->diagnostics->timing = $frest->getTimingObject();
+			$this->outputObject->diagnostics->memory = number_format((memory_get_peak_usage(TRUE) / 1000 / 1000), 3) . 'mb';
+		}
 		
 		switch ($format) {
 			case FROutputFormat::JSON:
@@ -81,7 +81,12 @@ abstract class FRResult {
 				header('Content-Length: ' . strlen($output));
 			}
 			
-			die($output);
+			if (is_string($output)) {
+				echo $output;
+			}
+			else {
+				var_dump($output);
+			}
 		}
 	}
 	
