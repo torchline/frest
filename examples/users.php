@@ -6,7 +6,12 @@
 require_once('../FREST/FREST.php');
 
 // some more raw hacks
-$id = isset($_GET['__id']) ? $_GET['__id'] : NULL;
-unset($_GET['__id']);
+if (isset($_GET['__id'])) {
+	$id = $_GET['__id'];
+	unset($_GET['__id']);
 
-FREST::outputWithID($id);
+	FREST::outputSingle($id, NULL, array('fields' => 'id,name,token,modified,rank(id),inbox(id,text,sender(id))'));
+}
+else {
+	FREST::outputMultiple();
+}

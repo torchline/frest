@@ -10,5 +10,5 @@ Options -MultiViews
     RewriteCond %{SCRIPT_FILENAME} !-f 
   
     RewriteRule ^users$ ./users.php$1 [L]
-    RewriteRule ^users/(\d+)*$ ./users.php?__id=$1 [L]
+    RewriteRule ^users/(\d+)*$ ./users.php?__id=$1 [L] # this is faulty, can't pass parameters
 </IfModule>

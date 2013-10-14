@@ -16,6 +16,8 @@ require_once(dirname(__FILE__) . '/requests/FRDeleteRequest.php');
  */
 class FREST {
 
+	const FORCED_NULL = '__NULL__';
+	
 	/** @var FRConfig */
 	protected $config;
 
@@ -95,7 +97,7 @@ class FREST {
 				}
 			}
 		}
-		
+			
 		// determine request method
 		if (!isset($requestMethod)) {
 			$actualMethodString = $_SERVER['REQUEST_METHOD'];
@@ -160,7 +162,7 @@ class FREST {
 		
 		switch ($this->method) {
 			case FRMethod::GET: // read
-				if (isset($resourceID)) {
+				if (isset($resourceID) && $resourceID != self::FORCED_NULL) {
 					$this->request = new FRSingleReadRequest($this, $resourceID, $parameters, $resourceFunctionName);
 				}
 				else {
@@ -194,18 +196,24 @@ class FREST {
 	public static function automatic() {
 		return new FREST();
 	}
-	
-	public static function withID($id) {
-		return new FREST(NULL, NULL, $id);
-	}
-	
-	public static function outputWithID($id) {
-		self::withID($id)->outputResult();
-	}
-	
 	public static function outputAutomatic() {
 		self::automatic()->outputResult();
 	}
+	
+	public static function single($id, $resourceName = NULL, $parameters = NULL, $requestMethod = NULL, $resourceFunctionName = NULL) {
+		return new FREST(NULL, $resourceName, $id, $parameters, $requestMethod, $resourceFunctionName);
+	}
+	public static function outputSingle($id, $resourceName = NULL, $parameters = NULL, $requestMethod = NULL, $resourceFunctionName = NULL) {
+		self::single($id, $resourceName, $parameters, $requestMethod, $resourceFunctionName)->outputResult();
+	}
+
+	public static function multiple($resourceName = NULL, $parameters = NULL, $requestMethod = NULL, $resourceFunctionName = NULL) {
+		return new FREST(NULL, $resourceName, self::FORCED_NULL, $parameters, $requestMethod, $resourceFunctionName);
+	}
+	public static function outputMultiple($resourceName = NULL, $parameters = NULL, $requestMethod = NULL, $resourceFunctionName = NULL) {
+		self::single($resourceName, $parameters, $requestMethod, $resourceFunctionName)->outputResult();
+	}
+	
 		
 
 	/**
@@ -214,12 +222,11 @@ class FREST {
 	 * @param int $format
 	 * @param bool $inline
 	 * 
-	 * @return FRResult
+	 * @return mixed
 	 */
 	public function outputResult($format = FROutputFormat::JSON, $inline = FALSE) {
 		if (isset($this->error)) {
-			$this->error->output($this, $format, $inline);
-			return;
+			return $this->error->output($this, $format, $inline);
 		}
 		
 		/** @var FRRequest $request */

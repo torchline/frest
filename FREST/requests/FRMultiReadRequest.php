@@ -25,14 +25,13 @@ class FRMultiReadRequest extends FRReadRequest {
 	 * @param FREST $frest
 	 * @param array $parameters
 	 * @param string $resourceFunctionName
-	 * @param FRResource $resource
 	 */
-	public function __construct($frest, $parameters, $resourceFunctionName = NULL, $resource = NULL) {
+	public function __construct($frest, $parameters, $resourceFunctionName = NULL) {
 		$this->miscParameters['limit'] = TRUE;
 		$this->miscParameters['offset'] = TRUE;
 		$this->miscParameters['orderBy'] = TRUE;
 		
-		parent::__construct($frest, NULL, $parameters, $resourceFunctionName, $resource);
+		parent::__construct($frest, NULL, $parameters, $resourceFunctionName);
 	}
 	
 	
@@ -94,8 +93,6 @@ class FRMultiReadRequest extends FRReadRequest {
 			return $error;
 		}
 
-		
-		
 		// Order By String
 		$orderBysString = $this->generateOrderString($this->orderSpecs, $error);
 		if (isset($error)) {
@@ -113,7 +110,7 @@ class FRMultiReadRequest extends FRReadRequest {
 		// SQL
 		$sql = "SELECT {$fieldString} FROM {$tablesToReadString} {$joinsString} {$conditionString} {$orderBysString} LIMIT :_offset, :_limit";
 		$countSQL = "SELECT COUNT(0) AS Count FROM {$tablesToReadString} {$joinsString} {$conditionString}";
-		
+		//echo "$sql\n\n";
 		$resultsStmt = $pdo->prepare($sql);
 		$countStmt = $pdo->prepare($countSQL);
 
@@ -157,7 +154,7 @@ class FRMultiReadRequest extends FRReadRequest {
 		}
 
 		$this->result = new FRMultiReadResult($objects, $limit, $offset, $count);
-		
+			
 		return $this->result;
 	}
 	
@@ -170,7 +167,7 @@ class FRMultiReadRequest extends FRReadRequest {
 		$conditionSpecs = array();
 		
 		$conditionSettings = $this->resource->getConditionSettings();
-		
+
 		/** @var FRConditionSetting $conditionSetting */
 		foreach ($conditionSettings as $conditionSetting) {
 			$alias = $conditionSetting->getAlias();

@@ -4,7 +4,7 @@ $config['db']['type'] = 'mysql';
 $config['db']['host'] = 'localhost';
 $config['db']['name'] = 'frest';
 $config['db']['username'] = 'root';
-$config['db']['password'] = '';
+$config['db']['password'] = 'root';
 
 $config['authDB'] = NULL;
 

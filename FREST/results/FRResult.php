@@ -42,21 +42,29 @@ abstract class FRResult {
 		
 		switch ($format) {
 			case FROutputFormat::JSON:
-				$outputString = json_encode($this->outputObject);
+				$output = json_encode($this->outputObject);
 				break;
 			case FROutputFormat::JSONP:
-				$outputString = 'callback('.json_encode($this->outputObject).')';
+				$output = 'callback('.json_encode($this->outputObject).')';
 				break;
 			case FROutputFormat::XML:
-				$outputString = '<root>not yet implemented</root>';
+				$output = '<root>not yet implemented</root>';
+				break;
+			case FROutputFormat::_ARRAY:
+				$output = get_object_vars($this->outputObject);
+				$inline = TRUE;
+				break;
+			case FROutputFormat::OBJECT:
+				$output = $this->outputObject;
+				$inline = TRUE;
 				break;
 			default:
-				$outputString = 'invalid output format';
+				$output = 'invalid output format';
 				break;
 		}
 		
 		if ($inline) {
-			return $outputString;
+			return $output;
 		}
 		else {
 			$headerStatusCode = $frest->getSuppressHTTPStatusCodes() ? 200 : $this->httpStatusCode;
@@ -69,11 +77,11 @@ abstract class FRResult {
 				//ob_end_clean();
 				//ob_start('ob_gzhandler');
 			}
-			else {
-				header('Content-Length: ' . strlen($outputString));
+			else if ($output) {
+				header('Content-Length: ' . strlen($output));
 			}
 			
-			die($outputString);
+			die($output);
 		}
 	}
 	

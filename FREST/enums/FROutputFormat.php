@@ -7,6 +7,8 @@ final class FROutputFormat {
 	const JSON = 1;
 	const JSONP = 2;
 	const XML = 3;
+	const _ARRAY = 4;
+	const OBJECT = 5;
 	
 	private function __construct() {}
 

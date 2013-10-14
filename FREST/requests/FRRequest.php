@@ -49,17 +49,12 @@ abstract class FRRequest {
 	 * @param int $resourceID
 	 * @param array $parameters
 	 * @param string $resourceFunctionName
-	 * @param FRResource $resource
 	 */
-	public function __construct($frest, $resourceID, $parameters, $resourceFunctionName = NULL, $resource = NULL) {
+	public function __construct($frest, $resourceID, $parameters, $resourceFunctionName = NULL) {
 		$this->frest = $frest;
 		$this->resourceID = $resourceID;
 		$this->parameters = $parameters;
 		$this->resourceFunctionName = $resourceFunctionName;
-
-		if (isset($resource)) {
-			$this->setupWithResource($resource);
-		}
 	}
 
 
@@ -141,9 +136,8 @@ abstract class FRRequest {
 	 * @param FRErrorResult $error
 	 */
 	protected function setupResourceFunction(&$error = NULL) {
-		
 		$resourceFunctions = $this->resource->getResourceFunctions();
-		
+
 		// check if valid function name
 		if (!isset($resourceFunctions) || !isset($resourceFunctions[$this->resourceFunctionName])) {
 			$error = new FRErrorResult(FRErrorResult::ResourceFunctionDoesntExist, 400, "Function name: '{$this->resourceFunctionName}'");

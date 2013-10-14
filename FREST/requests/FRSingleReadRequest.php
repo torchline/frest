@@ -11,7 +11,7 @@ class FRSingleReadRequest extends FRReadRequest {
 	public function setupWithResource($resource, &$error = NULL) {
 		parent::setupWithResource($resource, $error);
 		if (isset($error)) {
-			return;
+			return $error;
 		}
 
 		// Resource ID
@@ -59,7 +59,6 @@ class FRSingleReadRequest extends FRReadRequest {
 		$tableAbbrvWithID = $this->getTableAbbreviation($tableWithID);
 
 		$sql = "SELECT {$fieldString} FROM {$tablesToReadString}{$joinString} WHERE {$tableAbbrvWithID}.{$idField} = :id LIMIT 1";
-		
 		$stmt = $pdo->prepare($sql);
 		$success = $stmt->execute(array(
 			':id' => $this->resourceID
@@ -82,7 +81,7 @@ class FRSingleReadRequest extends FRReadRequest {
 		}
 		
 		$this->result = new FRSingleReadResult($objects[0]);
-				
+		
 		return $this->result;
 	}
 

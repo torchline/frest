@@ -4,6 +4,7 @@
 */
 
 require_once(dirname(__FILE__).'/../enums/FRMethod.php');
+require_once(dirname(__FILE__).'/../enums/FRFilter.php');
 require_once(dirname(__FILE__).'/../settings/FRSetting.php');
 require_once(dirname(__FILE__).'/../functions/FRFunction.php');
 require_once(dirname(__FILE__).'/../results/FRResourceFunctionResult.php');
@@ -13,7 +14,7 @@ require_once(dirname(__FILE__).'/../results/FRResourceFunctionResult.php');
  * Class resources
  */
 abstract class FRResource {
-	
+		
 	/**
 	 * The limit to use on SQL queries when no limit is specified
 	 * 
@@ -39,45 +40,11 @@ abstract class FRResource {
 	 * 
 	 * Example:
 	 * 
-	 * array(
-	 *      new FRTableSetting('User', array(
-	 *		        new FRFieldSetting('ID', FRVariableType::INT),
-	 *		        new FRFieldSetting('Username', FRVariableType::STRING),
-	 *		        new FRFieldSetting('IsVerified', FRVariableType::BOOL)
-	 *		    )
-	 *	    )
-	 * )
+	 * 
 	 * 
 	 * @var array (required)
 	 */
 	private $tableSettings;
-
-	/**
-	 * An associative array with keys defining the pseudo name or "alias" of a property
-	 * of the resource and values being an array of configuration options for each. All
-	 * aliases referenced elsewhere in this configuration object must be defined here.
-	 * 
-	 * This is where the facade pattern of the API comes into play. Properties of the 
-	 * resource are exposed to the API and are referenced using a simplified vernacular 
-	 * that is not necessarily bound to the internal structure or naming convention.
-	 * 
-	 * Example:
-	 * 
-	 * array(
-	 *      'id' => array(
-	 *          Setting::FIELD => 'ID',
-	 *      )
-	 *      'username' => array(
-	 *          Setting::FIELD => 'Username',
-	 *      ),
-	 *      'verified' => array(
-	 *          Setting::FIELD => 'IsVerified',
-	 *      )
-	 * )
-	 * 
-	 * @var array (required)
-	 */
-	private $aliasSettings;
 
 	/**
 	 * An associative array with keys indicating the pseudo name or "alias" of a property
@@ -86,11 +53,7 @@ abstract class FRResource {
 	 * 
 	 * Example:
 	 * 
-	 * array(
-	 *      new FRAliasSetting('id', 'ID'),
-	 *      new FRAliasSetting('username', 'Username'),
-	 *      new FRAliasSetting('verified', 'IsVerified')
-	 * )
+	 * 
 	 * 
 	 * @var array (optional)
 	 */
@@ -104,11 +67,7 @@ abstract class FRResource {
 	 * 
 	 * Example:
 	 *
-	 * array(
-	 *      'id' => array(),
-	 * 	    'username' => array(),
-	 *      'verified' => array()
-	 * )
+	 * 
 	 * 
 	 * @var array (optional)
 	 */
@@ -122,11 +81,7 @@ abstract class FRResource {
 	 * 
 	 * Example:
 	 *
-	 * array(
-	 *      'id' => array(),
-	 * 	    'username' => array(),
-	 *      'verified' => array()
-	 * )
+	 * 
 	 * 
 	 * @var array (optional)
 	 */
@@ -196,6 +151,13 @@ abstract class FRResource {
 	 */
 	private $fieldsByAlias;
 
+	/**
+	 * Created dynamically to quicken field lookup by field
+	 *
+	 * @var array
+	 */
+	private $aliasesByField;
+
 	
 	/**
 	 * @var FREST
@@ -214,6 +176,26 @@ abstract class FRResource {
 
 
 	/**
+	 * @param string $date
+	 * @return int
+	 */
+	public function timestamp($date) {
+		return strtotime($date);
+	}
+	
+
+
+	/**
+	 * @param string $alias
+	 * @return string
+	 */
+	public function value($alias)
+	{
+		return '{'.$alias.'}';
+	}
+	
+	
+	/**
 	 * Where everything is set in subclasses (e.g. read settings, alias settings, table settings, etc.)
 	 */
 	public abstract function setup();
@@ -230,7 +212,9 @@ abstract class FRResource {
 	 * 
 	 * @return bool
 	 */
-	public abstract function isAuthRequiredForRequest($request, &$scopes = NULL);
+	public function isAuthRequiredForRequest($request, &$scopes = NULL) {
+		return FALSE;
+	}
 
 
 	/**
@@ -270,18 +254,18 @@ abstract class FRResource {
 		if (!isset($this->fieldsByAlias)) {
 			$this->fieldsByAlias = array();
 
-			/** @var FRAliasSetting $aliasSetting */
-			foreach ($this->aliasSettings as $aliasSetting) {
-				$this->fieldsByAlias[$aliasSetting->getAlias()] = $aliasSetting->getField();
+			/** @var FRTableSetting $tableSetting */
+			foreach ($this->tableSettings as $tableSetting) {
+				$fieldSettings = $tableSetting->getFieldSettings();
+				
+				/** @var FRFieldSetting $fieldSetting */
+				foreach ($fieldSettings as $fieldSetting) {
+					$this->fieldsByAlias[$fieldSetting->getAlias()] = $fieldSetting->getField();
+				}
 			}
 		}
 
-		if (isset($this->fieldsByAlias[$alias])) {
-			return $this->fieldsByAlias[$alias];
-		}
-		else {
-			return NULL;
-		}
+		return isset($this->fieldsByAlias[$alias]) ? $this->fieldsByAlias[$alias] : NULL;
 	}
 	
 
@@ -290,19 +274,21 @@ abstract class FRResource {
 	 * @return string
 	 */
 	public function getAliasForField($field) {
-		$alias = NULL;
-		
-		$aliasSettings = $this->getAliasSettings();
-		
-		/** @var FRAliasSetting $aliasSetting */
-		foreach ($aliasSettings as $aliasSetting) {
-			if ($aliasSetting->getField() == $field) {
-				$alias = $aliasSetting->getAlias();
-				break;
+		if (!isset($this->aliasesByField)) {
+			$this->aliasesByField = array();
+
+			/** @var FRTableSetting $tableSetting */
+			foreach ($this->tableSettings as $tableSetting) {
+				$fieldSettings = $tableSetting->getFieldSettings();
+
+				/** @var FRFieldSetting $fieldSetting */
+				foreach ($fieldSettings as $fieldSetting) {
+					$this->aliasesByField[$fieldSetting->getField()] = $fieldSetting->getAlias();
+				}
 			}
 		}
 
-		return $alias;
+		return isset($this->aliasesByField[$field]) ? $this->aliasesByField[$field] : NULL;
 	}
 	
 
@@ -360,7 +346,81 @@ abstract class FRResource {
 		
 		return $firstFieldSetting->getField();
 	}
-	
+
+	/**
+	 * @param array $settingsToModify
+	 */
+	public function modifyReadSettings($settingsToModify) {
+		$readSettings = $this->getReadSettings();
+
+		/** @var FRReadSetting $settingToModify */
+		foreach ($settingsToModify as $settingToModify) {
+			$key = $settingToModify->getAlias();
+			$readSettings[$key] = $settingToModify;
+		}
+
+		$this->setReadSettings($readSettings);
+	}
+
+	/**
+	 * @param array $settingsToModify
+	 */
+	public function modifyConditionSettings($settingsToModify) {
+		$conditionSettings = $this->getConditionSettings();
+
+		/** @var FRConditionSetting $settingToModify */
+		foreach ($settingsToModify as $settingToModify) {
+			$key = $settingToModify->getAlias();
+			$conditionSettings[$key] = $settingToModify;
+		}
+
+		$this->setConditionSettings($conditionSettings);
+	}
+
+	/**
+	 * @param array $settingsToModify
+	 */
+	public function modifyOrderSettings($settingsToModify) {
+		$orderSettings = $this->getOrderSettings();
+
+		/** @var FROrderSetting $settingToModify */
+		foreach ($settingsToModify as $settingToModify) {
+			$key = $settingToModify->getAlias();
+			$orderSettings[$key] = $settingToModify;
+		}
+
+		$this->setOrderSettings($orderSettings);
+	}
+
+	/**
+	 * @param array $settingsToModify
+	 */
+	public function modifyCreateSettings($settingsToModify) {
+		$createSettings = $this->getCreateSettings();
+
+		/** @var FRCreateSetting $settingToModify */
+		foreach ($settingsToModify as $settingToModify) {
+			$key = $settingToModify->getAlias();
+			$createSettings[$key] = $settingToModify;
+		}
+
+		$this->setCreateSettings($createSettings);
+	}
+
+	/**
+	 * @param array $settingsToModify
+	 */
+	public function modifyUpdateSettings($settingsToModify) {
+		$updateSettings = $this->getUpdateSettings();
+
+		/** @var FRUpdateSetting $settingToModify */
+		foreach ($settingsToModify as $settingToModify) {
+			$key = $settingToModify->getAlias();
+			$updateSettings[$key] = $settingToModify;
+		}
+
+		$this->setUpdateSettings($updateSettings);
+	}
 	
 	/**
 	 * @return int
@@ -386,14 +446,23 @@ abstract class FRResource {
 	/**
 	 * @return array
 	 */
-	public function getAliasSettings() {
-		return $this->aliasSettings;
-	}
-
-	/**
-	 * @return array
-	 */
 	public function getReadSettings() {
+		if (!isset($this->readSettings)) {
+			$readSettings = array();
+			
+			/** @var FRTableSetting $tableSetting */
+			foreach ($this->tableSettings as $tableSetting) {
+				$fieldSettings = $tableSetting->getFieldSettings();
+
+				/** @var FRFieldSetting $fieldSetting */
+				foreach ($fieldSettings as $fieldSetting) {
+					$readSettings[] = FRSetting::readField($fieldSetting->getAlias());
+				}
+			}
+			
+			$this->setReadSettings($readSettings);
+		}
+		
 		return $this->readSettings;
 	}
 
@@ -401,6 +470,22 @@ abstract class FRResource {
 	 * @return array
 	 */
 	public function getConditionSettings() {
+		if (!isset($this->conditionSettings)) {
+			$conditionSettings = array();
+			
+			/** @var FRTableSetting $tableSetting */
+			foreach ($this->tableSettings as $tableSetting) {
+				$fieldSettings = $tableSetting->getFieldSettings();
+
+				/** @var FRFieldSetting $fieldSetting */
+				foreach ($fieldSettings as $fieldSetting) {
+					$conditionSettings[] = FRSetting::condition($fieldSetting->getAlias());
+				}
+			}
+			
+			$this->setConditionSettings($conditionSettings);
+		}
+
 		return $this->conditionSettings;
 	}
 
@@ -408,6 +493,22 @@ abstract class FRResource {
 	 * @return array
 	 */
 	public function getOrderSettings() {
+		if (!isset($this->orderSettings)) {
+			$orderSettings = array();
+			
+			/** @var FRTableSetting $tableSetting */
+			foreach ($this->tableSettings as $tableSetting) {
+				$fieldSettings = $tableSetting->getFieldSettings();
+
+				/** @var FRFieldSetting $fieldSetting */
+				foreach ($fieldSettings as $fieldSetting) {
+					$orderSettings[] = FRSetting::order($fieldSetting->getAlias());
+				}
+			}
+			
+			$this->setOrderSettings($orderSettings);
+		}
+
 		return $this->orderSettings;
 	}
 
@@ -415,6 +516,28 @@ abstract class FRResource {
 	 * @return array
 	 */
 	public function getCreateSettings() {
+		if (!isset($this->createSettings)) {
+			$createSettings = array();
+			$idField = $this->getIDField();
+
+			/** @var FRTableSetting $tableSetting */
+			foreach ($this->tableSettings as $tableSetting) {
+				$fieldSettings = $tableSetting->getFieldSettings();
+
+				/** @var FRFieldSetting $fieldSetting */
+				foreach ($fieldSettings as $fieldSetting) {
+					$alias = $fieldSetting->getAlias();
+					$field = $fieldSetting->getField();
+
+					if ($field !== $idField) {
+						$createSettings[] = FRSetting::update($alias);
+					}
+				}
+			}
+
+			$this->setUpdateSettings($createSettings);
+		}
+		
 		return $this->createSettings;
 	}
 
@@ -422,6 +545,28 @@ abstract class FRResource {
 	 * @return array
 	 */
 	public function getUpdateSettings() {
+		if (!isset($this->updateSettings)) {
+			$updateSettings = array();
+			$idField = $this->getIDField();
+			
+			/** @var FRTableSetting $tableSetting */
+			foreach ($this->tableSettings as $tableSetting) {
+				$fieldSettings = $tableSetting->getFieldSettings();
+
+				/** @var FRFieldSetting $fieldSetting */
+				foreach ($fieldSettings as $fieldSetting) {
+					$alias = $fieldSetting->getAlias();
+					$field = $fieldSetting->getField();
+
+					if ($field !== $idField) {
+						$updateSettings[] = FRSetting::update($alias);
+					}
+				}
+			}
+			
+			$this->setUpdateSettings($updateSettings);
+		}
+
 		return $this->updateSettings;
 	}
 
@@ -457,21 +602,6 @@ abstract class FRResource {
 		$this->tableSettings = $keyedSettings;
 	}
 	
-	/**
-	 * @param array $aliasSettings
-	 */
-	protected function setAliasSettings($aliasSettings) {
-		$keyedSettings = array();
-
-		/** @var FRAliasSetting $setting */
-		foreach ($aliasSettings as $setting) {
-			$key = $setting->getAlias();
-			$keyedSettings[$key] = $setting;
-		}
-
-		$this->aliasSettings = $keyedSettings;
-	}
-
 	/**
 	 * @param array $readSettings
 	 */
@@ -595,7 +725,6 @@ abstract class FRResource {
 	{
 		return $this->frest;
 	}
-
 
 	/**
 	 * @return \PDO

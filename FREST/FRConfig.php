@@ -80,7 +80,7 @@ class FRConfig {
 			throw new Exception("No config file at '{$path}'", 500);
 		}
 		
-		include_once($path);
+		include($path);
 		
 		if (!isset($config)) {
 			throw new Exception("No config variable found in config file at '{$path}'", 500);

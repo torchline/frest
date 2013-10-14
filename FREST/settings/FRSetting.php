@@ -5,7 +5,6 @@
 
 require_once(dirname(__FILE__).'/../settings/FRTableSetting.php');
 require_once(dirname(__FILE__).'/../settings/FRFieldSetting.php');
-require_once(dirname(__FILE__).'/../settings/FRAliasSetting.php');
 
 require_once(dirname(__FILE__).'/../settings/FRFieldReadSetting.php');
 require_once(dirname(__FILE__).'/../settings/FRSingleResourceReadSetting.php');
@@ -17,18 +16,17 @@ require_once(dirname(__FILE__).'/../settings/FROrderSetting.php');
 require_once(dirname(__FILE__).'/../settings/FRCreateSetting.php');
 require_once(dirname(__FILE__).'/../settings/FRUpdateSetting.php');
 
+/**
+ * Class FRSetting
+ */
 class FRSetting {
 	/*** META ***/
 	static function table($table, $fieldSettings) {
 		return new FRTableSetting($table, $fieldSettings);
 	}
 
-	static function field($field, $variableType) {
-		return new FRFieldSetting($field, $variableType);
-	}
-	
-	static function alias($alias, $field) {
-		return new FRAliasSetting($alias, $field);
+	static function field($alias, $field, $variableType) {
+		return new FRFieldSetting($alias, $field, $variableType);
 	}
 	
 	

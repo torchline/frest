@@ -7,6 +7,9 @@
  * Class FRFieldSetting
  */
 class FRFieldSetting {
+
+	/** @var string */
+	protected $alias;
 	
 	/** @var string */
 	protected $field;
@@ -16,14 +19,22 @@ class FRFieldSetting {
 
 
 	/**
+	 * @param string $alias
 	 * @param string $field
 	 * @param int $variableType
 	 */
-	public function __construct($field, $variableType) {
+	public function __construct($alias, $field, $variableType) {
+		$this->alias = $alias;
 		$this->field = $field;
 		$this->variableType = $variableType;
 	}
 
+	/**
+	 * @return string
+	 */
+	public function getAlias() {
+		return $this->alias;
+	}
 	
 	/**
 	 * @return string
