@@ -91,6 +91,7 @@ abstract class FRReadRequest extends FRRequest {
 	 */
 	protected function generateReadSettings($resource, $parameters, $partialPrefix = NULL, &$error = NULL) {
 		$readSettings = array();
+		$resourceName = get_class($resource);
 
 		$allReadSettings = $resource->getReadSettings();
 
@@ -108,12 +109,12 @@ abstract class FRReadRequest extends FRRequest {
 					$aliasFromPartial = $this->parsePartialAliasFromString($alias, $definedSubAliases);
 					
 					if (!isset($definedSubAliases)) {
-						$error = new FRErrorResult(FRErrorResult::InvalidField, 400, "No partial fields passed but partial syntax attempted in field '{$aliasFromPartial}'");
+						$error = new FRErrorResult(FRErrorResult::InvalidField, 400, "No partial fields passed but partial syntax attempted in field '{$alias}' on resource {$resourceName}");
 						return NULL;
 					}
 					
 					if (!isset($aliasFromPartial)) {
-						$error = new FRErrorResult(FRErrorResult::InvalidField, 400, "Invalid field name specified in 'fields' parameter: '{$alias}'");
+						$error = new FRErrorResult(FRErrorResult::InvalidField, 400, "Invalid field name specified in 'fields' parameter: '{$alias}' on resource {$resourceName}");
 						return NULL;
 					}
 
@@ -121,12 +122,12 @@ abstract class FRReadRequest extends FRRequest {
 					$readSetting = $allReadSettings[$aliasFromPartial];
 
 					if (!isset($readSetting)) {
-						$error = new FRErrorResult(FRErrorResult::InvalidField, 400, "Invalid field name specified in 'fields' parameter: '{$aliasFromPartial}'");
+						$error = new FRErrorResult(FRErrorResult::InvalidField, 400, "Invalid field name specified in 'fields' parameter: '{$aliasFromPartial}' on resource {$resourceName}");
 						return NULL;
 					}
 
 					if (!($readSetting instanceof FRSingleResourceReadSetting) && !($readSetting instanceof FRMultiResourceReadSetting)) {
-						$error = new FRErrorResult(FRErrorResult::PartialSyntaxNotSupported, 400, "The field '{$aliasFromPartial}' does not respond to partial object syntax");
+						$error = new FRErrorResult(FRErrorResult::PartialSyntaxNotSupported, 400, "The field '{$aliasFromPartial}' on resource {$resourceName} does not respond to partial object syntax");
 						return NULL;
 					}
 
@@ -149,7 +150,7 @@ abstract class FRReadRequest extends FRRequest {
 							$subAliasFromPartial = $this->parsePartialAliasFromString($subAlias, $deepAliases);
 
 							if (!isset($allLoadedResourceReadSettings[$subAliasFromPartial])) {
-								$error = new FRErrorResult(FRErrorResult::InvalidField, 400, "Invalid sub-field '{$subAlias}' specified in field '{$alias}'");
+								$error = new FRErrorResult(FRErrorResult::InvalidField, 400, "Invalid sub-field '{$subAlias}' specified in field '{$alias}' on resource {$resourceName}");
 								return NULL;
 							}
 
@@ -163,8 +164,8 @@ abstract class FRReadRequest extends FRRequest {
 								}
 
 								$subPartialPrefix = isset($partialPrefix) ? "{$partialPrefix}.{$aliasFromPartial}.{$subAliasFromPartial}" : "{$aliasFromPartial}.{$subAliasFromPartial}";
-
-								$subReadSettings = $this->generateReadSettings($subLoadedResource, array('fields' => implode($deepAliases)), $subPartialPrefix, $error);
+								
+								$subReadSettings = $this->generateReadSettings($subLoadedResource, array('fields' => implode(',', $deepAliases)), $subPartialPrefix, $error);
 								if (isset($error)) {
 									return NULL;
 								}
@@ -175,7 +176,7 @@ abstract class FRReadRequest extends FRRequest {
 								die("Some multi resource partial syntaxing has not yet been implemented. Sorry!");
 							}
 							else {
-								$error = new FRErrorResult(FRErrorResult::PartialSyntaxNotSupported, 400, "The field '{$subAliasFromPartial}' does not support partial syntax");
+								$error = new FRErrorResult(FRErrorResult::PartialSyntaxNotSupported, 400, "The field '{$subAliasFromPartial}' on resource {$resourceName} does not support partial syntax");
 								return NULL;
 							}
 							
@@ -221,7 +222,8 @@ abstract class FRReadRequest extends FRRequest {
 	 */
 	private function addRequiredReadSettings($resource, &$readSettings, &$error = NULL) {
 		$requiredReadSettings = array();
-
+		$resourceName = get_class($resource);
+		
 		$allReadSettings = $resource->getReadSettings();
 		$class = get_class($resource);
 		
@@ -246,7 +248,7 @@ abstract class FRReadRequest extends FRRequest {
 						
 						if (isset($subAliases)) {
 							if (!($requiredReadSetting instanceof FRSingleResourceReadSetting)) {
-								$error = new FRErrorResult(FRErrorResult::Config, 500, "The required alias '{$requiredAliasFromPartial}' is not a resource and should contain partial object syntax");
+								$error = new FRErrorResult(FRErrorResult::Config, 500, "The required alias '{$requiredAliasFromPartial}' on resource {$resourceName} is not a resource and should contain partial object syntax");
 								return;
 							}
 

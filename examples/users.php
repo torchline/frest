@@ -10,7 +10,7 @@ if (isset($_GET['__id'])) {
 	$id = $_GET['__id'];
 	unset($_GET['__id']);
 
-	FREST::outputSingle($id, NULL, array('fields' => 'id,name,token,modified,rank(id),inbox(id,text,sender(name))'));
+	FREST::outputSingle($id, NULL, array('fields' => 'id,name,token,modified,rank(id),inbox')); // TODO: can't include sender AND receiver in inbox partial (even within resource)
 }
 else {
 	FREST::outputMultiple();
