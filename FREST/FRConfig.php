@@ -6,11 +6,11 @@
 class FRConfig {
 	
 	/**
-	 * Outputs miscellaneous timing data alongside the data
+	 * Outputs timing and memory data alongside the response
 	 *
 	 * @var bool (default: FALSE)
 	 */
-	protected $showDiagnosticData = FALSE;
+	protected $showDiagnostics = FALSE;
 
 	/**
 	 * Runs a check against each resource as it is loaded to ensure
@@ -122,8 +122,8 @@ class FRConfig {
 			$frestConfig->setAuthPDO($authPDO);
 		}
 
-		if (isset($config['showDiagnosticData'])) {
-			$frestConfig->setShowDiagnosticData($config['showDiagnosticData']);
+		if (isset($config['showDiagnostics'])) {
+			$frestConfig->setShowDiagnostics($config['showDiagnostics']);
 		}
 
 		if (isset($config['checkResourceValidity'])) {
@@ -192,17 +192,17 @@ class FRConfig {
 	/**
 	 * @return boolean
 	 */
-	public function getShowDiagnosticData()
+	public function getShowDiagnostics()
 	{
-		return $this->showDiagnosticData;
+		return $this->showDiagnostics;
 	}
 
 	/**
-	 * @param boolean $showDiagnosticData
+	 * @param boolean $showDiagnostics
 	 */
-	public function setShowDiagnosticData($showDiagnosticData)
+	public function setShowDiagnostics($showDiagnostics)
 	{
-		$this->showDiagnosticData = $showDiagnosticData;
+		$this->showDiagnostics = $showDiagnostics;
 	}
 	
 	/**

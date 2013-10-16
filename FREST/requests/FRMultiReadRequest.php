@@ -26,12 +26,12 @@ class FRMultiReadRequest extends FRReadRequest {
 	 * @param array $parameters
 	 * @param string $resourceFunctionName
 	 */
-	public function __construct($frest, $parameters, $resourceFunctionName = NULL) {
+	public function __construct($frest, $parameters, $resourceFunctionName = NULL, $parentAlias = NULL) {
 		$this->miscParameters['limit'] = TRUE;
 		$this->miscParameters['offset'] = TRUE;
 		$this->miscParameters['orderBy'] = TRUE;
 		
-		parent::__construct($frest, NULL, $parameters, $resourceFunctionName);
+		parent::__construct($frest, NULL, $parameters, $resourceFunctionName, $parentAlias);
 	}
 	
 	
@@ -155,7 +155,7 @@ class FRMultiReadRequest extends FRReadRequest {
 
 		$this->frest->stopTimingForLabel(FRTiming::SQL, 'multiread');
 
-		$this->parseObjects($this->resource, $objects, $this->readSettings, $error);
+		$this->parseObjects($this->resource, $objects, $this->readSettings, NULL, $error);
 		if (isset($error)) {
 			return $error;
 		}

@@ -242,20 +242,16 @@ class FREST {
 	 * @return mixed
 	 */
 	public function outputResult($format = FROutputFormat::JSON, $inline = FALSE) {
-		$this->startTimingForLabel('total', 'frest');
-
 		if (isset($this->error)) {
-			return $this->error->output($this, $format, $inline);
+			$output = $this->error->output($this, $format, $inline);
+		}
+		else {
+			$this->startTimingForLabel('total', 'frest');
+			$result = $this->request->generateResult();
+			$this->stopTimingForLabel('total', 'frest');
+			$output = $result->output($this, $format, $inline);
 		}
 		
-		/** @var FRRequest $request */
-		$request = $this->request;
-		$result = $request->generateResult();
-
-		$this->stopTimingForLabel('total', 'frest');
-
-		$output = $result->output($this, $format, $inline);
-
 		if (!$inline) {
 			die();
 		}

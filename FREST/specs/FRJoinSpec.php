@@ -10,6 +10,9 @@
 class FRJoinSpec {
 	
 	/** @var string */
+	protected $resourceAlias;
+	
+	/** @var string */
 	protected $resourceName;
 	
 	/** @var string */
@@ -32,6 +35,7 @@ class FRJoinSpec {
 	
 	
 	/**
+	 * @param string $resourceAlias
 	 * @param string $resourceName
 	 * @param string $tableToJoin
 	 * @param string $fieldToJoin
@@ -40,7 +44,8 @@ class FRJoinSpec {
 	 * @param string $type
 	 * @param array $subJoinSpecs
 	 */
-	public function __construct($resourceName, $tableToJoin, $fieldToJoin, $field, $alias, $type, $subJoinSpecs = NULL) {
+	public function __construct($resourceAlias, $resourceName, $tableToJoin, $fieldToJoin, $field, $alias, $type, $subJoinSpecs = NULL) {
+		$this->resourceAlias = $resourceAlias;
 		$this->resourceName = $resourceName;
 		$this->tableToJoin = $tableToJoin;
 		$this->fieldToJoin = $fieldToJoin;
@@ -52,6 +57,13 @@ class FRJoinSpec {
 	
 	
 
+	/**
+	 * @return string
+	 */
+	public function getResourceAlias() {
+		return $this->resourceAlias;
+	}
+	
 	/**
 	 * @return string
 	 */

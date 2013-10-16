@@ -34,7 +34,7 @@ abstract class FRResult {
 	public function output($frest, $format = FROutputFormat::JSON, $inline = FALSE) {
 		$this->outputObject = $this->generateOutputObject();
 
-		if ($frest->getConfig()->getShowDiagnosticData()) {
+		if ($frest->getConfig()->getShowDiagnostics()) {
 			$this->outputObject->diagnostics = new stdClass;
 			$this->outputObject->diagnostics->timing = $frest->getTimingObject();
 			$this->outputObject->diagnostics->memory = number_format((memory_get_peak_usage(TRUE) / 1000 / 1000), 3) . 'mb';

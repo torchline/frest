@@ -54,7 +54,8 @@ class FRSingleReadRequest extends FRReadRequest {
 			return $error;
 		}
 
-		$idField = $this->resource->getIDField();
+		/** @var FRFieldSetting $idFieldSetting */
+		$idField = $this->resource->getIDField($idFieldSetting);
 		$tableWithID = $this->resource->getTableForField($idField);
 		$tableAbbrvWithID = $this->getTableAbbreviation($tableWithID);
 
@@ -82,7 +83,7 @@ class FRSingleReadRequest extends FRReadRequest {
 
 		$this->frest->stopTimingForLabel(FRTiming::SQL, 'singleread');
 
-		$this->parseObjects($this->resource, $objects, $this->readSettings, $error);
+		$this->parseObjects($this->resource, $objects, $this->readSettings, NULL, $error);
 		if (isset($error)) {
 			return $error;
 		}

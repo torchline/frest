@@ -7,7 +7,7 @@ $config['db']['username'] = 'root';
 $config['db']['password'] = 'root';
 $config['authDB'] = NULL;
 
-$config['showDiagnosticData'] = TRUE;
+$config['showDiagnostics'] = TRUE;
 
 $config['checkResourceValidity'] = TRUE;
 $config['enableForcedMethod'] = TRUE;

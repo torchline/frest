@@ -41,9 +41,12 @@ abstract class FRReadRequest extends FRRequest {
 	/** @var array */
 	protected $loadedResourceReadSettings = array();
 	
+	protected $parentAlias;
 	
-	public function __construct($frest, $resourceID = NULL, $parameters, $resourceFunctionName = NULL) {
+	
+	public function __construct($frest, $resourceID = NULL, $parameters, $resourceFunctionName = NULL, $parentAlias = NULL) {
 		$this->miscParameters['fields'] = TRUE;
+		$this->parentAlias = $parentAlias;
 		
 		parent::__construct($frest, $resourceID, $parameters, $resourceFunctionName);
 	}
@@ -58,14 +61,13 @@ abstract class FRReadRequest extends FRRequest {
 		if (isset($error)) {
 			return;
 		}
-		$class = get_class($this->resource);
 		
 		if (!isset($this->readSettings)) {
 			$error = new FRErrorResult(FRErrorResult::Config, 500, "No read settings exist or none are default");
 			return;
 		}
-
-		$this->joinSpecs = $this->generateJoinSpecs($this->resource, $this->readSettings, $error);
+		
+		$this->joinSpecs = $this->generateJoinSpecs($this->resource, $this->readSettings, NULL, $error);
 		if (isset($error)) {
 			return;
 		}
@@ -286,12 +288,12 @@ abstract class FRReadRequest extends FRRequest {
 	 * @param FRResource $resource
 	 * @param array $readSettings
 	 * @param bool $prefixWithTableAbbrv
-	 * @param string $superAlias
+	 * @param string $resourceAlias
 	 * @param FRErrorResult $error
 	 *
 	 * @return array|NULL
 	 */
-	protected function generateFieldSpecs($resource, $readSettings, $prefixWithTableAbbrv = FALSE, $superAlias = NULL, &$error = NULL) {
+	protected function generateFieldSpecs($resource, $readSettings, $prefixWithTableAbbrv = FALSE, $resourceAlias = NULL, &$error = NULL) {
 		$fieldSpecs = array();
 
 		foreach ($readSettings as $readSetting) {
@@ -302,13 +304,14 @@ abstract class FRReadRequest extends FRRequest {
 				}
 
 				$alias = $readSetting->getAlias();
-				$partialKey = isset($superAlias) ? "{$superAlias}.{$alias}" : $alias;
+				$partialKey = isset($resourceAlias) ? "{$resourceAlias}.{$alias}" : $alias;
 				$subReadSettings = isset($this->partialSubReadSettings[$partialKey]) ? $this->partialSubReadSettings[$partialKey] : $this->getLoadedResourceReadSettings($loadedResource, $readSetting, $error);
 				if (isset($error)) {
 					return NULL;
 				}
 				
-				$subFieldSpecs = $this->generateFieldSpecs($loadedResource, $subReadSettings, TRUE, $alias, $error);
+				$subResourceAlias = isset($resourceAlias) ? "{$resourceAlias}-{$alias}" : $alias;
+				$subFieldSpecs = $this->generateFieldSpecs($loadedResource, $subReadSettings, TRUE, $subResourceAlias, $error);
 				if (isset($error)) {
 					return NULL;
 				}
@@ -320,14 +323,9 @@ abstract class FRReadRequest extends FRRequest {
 				$field = $resource->getFieldForAlias($alias);
 				$table = $resource->getTableForField($field);
 
-				if (!isset($superAlias)) {
-					$tableAbbrv = $this->getTableAbbreviation($table);
-				}
-				else { // must be a joined resource
-					//$tableAbbrv = $this->getTableAbbreviationForAlias($superAlias);
-					$tableAbbrv = $this->getTableAbbreviation($table);
-				}
-				
+				$tableKey = isset($resourceAlias) ? "{$table}-{$resourceAlias}" : $table;
+				$tableAbbrv = $this->getTableAbbreviation($tableKey);
+
 				if ($prefixWithTableAbbrv) {
 					$name = "{$tableAbbrv}_{$alias}";
 				}
@@ -393,11 +391,12 @@ abstract class FRReadRequest extends FRRequest {
 	/**
 	 * @param FRResource $resource
 	 * @param array $readSettings
+	 * @param string $resourceAlias
 	 * @param FRErrorResult $error
 	 *
 	 * @return array|null
 	 */
-	protected function generateJoinSpecs($resource, $readSettings, &$error = NULL) {
+	protected function generateJoinSpecs($resource, $readSettings, $resourceAlias = NULL, &$error = NULL) {
 		$joinSpecs = array();
 
 		/** @var FRSingleResourceReadSetting $readSetting */
@@ -434,24 +433,25 @@ abstract class FRReadRequest extends FRRequest {
 				}
 				*/
 
-				$joinType = 'INNER';
 				$subReadSettings = isset($this->partialSubReadSettings[$alias]) ? $this->partialSubReadSettings[$alias] : $this->getLoadedResourceReadSettings($loadedResource, $readSetting, $error);
 				if (isset($error)) {
 					return NULL;
 				}
 				
-				$subJoinSpecs = $this->generateJoinSpecs($loadedResource, $subReadSettings, $error);
+				$subJoinSpecs = $this->generateJoinSpecs($loadedResource, $subReadSettings, $readSetting->getAlias(), $error);
 				if (isset($error)) {
 					return NULL;
 				}
 				
+				$class = get_class($resource);
 				$joinSpec = new FRJoinSpec(
+					$resourceAlias,
 					$readSetting->getResourceName(),
 					$loadedResourceTable,
 					$loadedResourceJoinField,
 					$resource->getFieldForAlias($alias),
 					$alias,
-					$joinType,
+					'INNER',
 					$subJoinSpecs
 				);
 
@@ -482,17 +482,20 @@ abstract class FRReadRequest extends FRRequest {
 
 		/** @var FRJoinSpec $joinSpec */
 		foreach ($joinSpecs as $joinSpec) {
+			$resourceAlias = $joinSpec->getResourceAlias();
+
+			$alias = $joinSpec->getAlias();
 			$joinType = $joinSpec->getType();
 			$joinTable = $joinSpec->getTableToJoin();
-			//$joinTableAbbrv = $this->getTableAbbreviationForAlias($joinSpec->getAlias());
-			$joinTableAbbrv = $this->getTableAbbreviation($joinTable);
+			$joinTableKey = isset($resourceAlias) ? "{$joinTable}-{$resourceAlias}-{$alias}" : "{$joinTable}-{$alias}";
+			$joinTableAbbrv = $this->getTableAbbreviation($joinTableKey);
+
 			$field = $joinSpec->getField();
 			$fieldTable = $resource->getTableForField($field);
-			$tableAbbrv = $this->getTableAbbreviation($fieldTable);
+			$tableKey = isset($resourceAlias) ? "{$fieldTable}-{$resourceAlias}" : $fieldTable;
+			$tableAbbrv = $this->getTableAbbreviation($tableKey);
 			$joinField = $joinSpec->getFieldToJoin();
 
-			$class = get_class($this->resource);
-			$otherClass = get_class($resource);
 			$joinsString .= " {$joinType} JOIN {$joinTable} {$joinTableAbbrv} ON {$tableAbbrv}.{$field} = {$joinTableAbbrv}.{$joinField}";
 
 			$loadedResource = $this->getLoadedResource($joinSpec->getResourceName(), $this, $error);
@@ -531,7 +534,7 @@ abstract class FRReadRequest extends FRRequest {
 
 		/** @var FRTableSpec $tableSpec */
 		foreach ($tableSpecs as $tableSpec) {
-			$table = $tableSpec->getTable();			
+			$table = $tableSpec->getTable();
 			$tableAbbrv = $tableSpec->getTableAbbreviation();
 
 			if ($i > 0) {
@@ -541,11 +544,12 @@ abstract class FRReadRequest extends FRRequest {
 
 				/** @var FRTableSetting $tableSetting */
 				foreach ($tableSettings as $tableSetting) {
-					$tableAbbrvForIDField = $this->getTableAbbreviation($tableSetting->getTable());
+					$tableForIDField = $tableSetting->getTable();
+					$tableAbbrvForIDField = $this->getTableAbbreviation($tableForIDField);
 
 					/** @var FRFieldSetting $firstFieldSetting */
 					$fieldSettings = $tableSetting->getFieldSettings();
-					$firstFieldSetting = $fieldSettings[0];
+					$firstFieldSetting = reset($fieldSettings);
 					$idField = $firstFieldSetting->getField();
 
 					if ($k == 0) {
@@ -584,21 +588,21 @@ abstract class FRReadRequest extends FRRequest {
 	 * @param FRResource $resource
 	 * @param array $objects
 	 * @param array $readSettings
-	 * @param string $parentAlias
+	 * @param string $resourceAlias
 	 * @param FRErrorResult $error
 	 */
-	protected function parseObjects($resource, &$objects, $readSettings, $parentAlias = NULL, &$error = NULL) {				
+	protected function parseObjects($resource, &$objects, $readSettings, $resourceAlias = NULL, &$error = NULL) {					
 		// stores the read settings that are just an FRComputedReadSetting
 		$computedReadSettings = array();
 		
-		$timerInstance = isset($parentAlias) ? $parentAlias.'-parse' : 'parse';
+		$timerInstance = isset($resourceAlias) ? $resourceAlias.'-parse' : 'parse';
 
 		/** @var FRReadSetting $readSetting */
 		foreach ($readSettings as $readSetting) {
 			$this->frest->startTimingForLabel(FRTiming::POST_PROCESSING, $timerInstance);
 
 			$alias = $readSetting->getAlias();
-			$partialSubKey = isset($parentAlias) ? "{$parentAlias}.{$alias}" : $alias;
+			$partialSubKey = isset($resourceAlias) ? "{$resourceAlias}.{$alias}" : $alias;
 
 			if ($readSetting instanceof FRComputedReadSetting) {
 				$computedReadSettings[$alias] = $readSetting;
@@ -635,7 +639,7 @@ abstract class FRReadRequest extends FRRequest {
 
 					$this->frest->stopTimingForLabel(FRTiming::POST_PROCESSING, $timerInstance);
 
-					$request = new FRMultiReadRequest($this->frest, $requestParameters);
+					$request = new FRMultiReadRequest($this->frest, $requestParameters, NULL, $readSetting->getAlias());
 					$request->setupWithResource($loadedResource, $error);
 					if (isset($error)) {
 						return;
@@ -643,7 +647,7 @@ abstract class FRReadRequest extends FRRequest {
 					
 					/** @var FRMultiReadResult $result */
 					$result = $request->generateResult();
-					if ($result instanceof FRErrorResult) {						
+					if ($result instanceof FRErrorResult) {
 						$error = $result;
 						return;
 					}
@@ -655,7 +659,7 @@ abstract class FRReadRequest extends FRRequest {
 			}
 			else if ($readSetting instanceof FRSingleResourceReadSetting) {
 				/** @var FRSingleResourceReadSetting $readSetting */
-								
+				
 				$loadedResource = $this->getLoadedResource($readSetting->getResourceName(), NULL, $error);
 				if (isset($error)) {
 					return;
@@ -681,12 +685,13 @@ abstract class FRReadRequest extends FRRequest {
 							$subAlias = $subReadSetting->getAlias();
 							$subField = $loadedResource->getFieldForAlias($subAlias);
 							$subTable = $loadedResource->getTableForField($subField);
-							$subTableAbbrv = $this->getTableAbbreviation($subTable);
+							$subTableKey = isset($resourceAlias) ? "{$subTable}-{$resourceAlias}-{$alias}" : "{$subTable}-{$alias}";
+							$subTableAbbrv = $this->getTableAbbreviation($subTableKey);
 							$subProperty = "{$subTableAbbrv}_{$subAlias}";
 
 							$subValue = $object->$subProperty;
 
-							$object->$alias->$subAlias = $subValue;							
+							$object->$alias->$subAlias = $subValue;
 							unset($object->$subProperty);
 						}
 						else if ($subReadSetting instanceof FRSingleResourceReadSetting) { // move properties of object that should belong to subObject (only nests once? idk)
@@ -696,7 +701,7 @@ abstract class FRReadRequest extends FRRequest {
 							}
 
 							$subReadAlias = $subReadSetting->getAlias();
-							$partialDeepKey = isset($parentAlias) ? "{$parentAlias}.{$alias}.{$subReadAlias}" : "{$alias}.{$subReadAlias}";
+							$partialDeepKey = isset($resourceAlias) ? "{$resourceAlias}.{$alias}.{$subReadAlias}" : "{$alias}.{$subReadAlias}";
 
 							$deepReadSettings = isset($this->partialSubReadSettings[$partialDeepKey]) ? $this->partialSubReadSettings[$partialDeepKey] : $this->getLoadedResourceReadSettings($subLoadedResource, $subReadSetting, $error);
 							if (isset($error)) {
@@ -708,7 +713,8 @@ abstract class FRReadRequest extends FRRequest {
 									$deepAlias = $deepReadSetting->getAlias();
 									$deepField = $subLoadedResource->getFieldForAlias($deepAlias);
 									$deepTable = $subLoadedResource->getTableForField($deepField);
-									$deepTableAbbrv = $this->getTableAbbreviation($deepTable);
+									$deepTableKey = "{$deepTable}-{$alias}-{$subReadAlias}";
+									$deepTableAbbrv = $this->getTableAbbreviation($deepTableKey);
 									$deepProperty = "{$deepTableAbbrv}_{$deepAlias}";
 
 									$deepValue = $object->$deepProperty;
@@ -723,10 +729,9 @@ abstract class FRReadRequest extends FRRequest {
 
 				// parse sub-objects as well
 				$subAlias = $readSetting->getAlias();
-				$subParentAlias = isset($parentAlias) ? "{$parentAlias}.{$subAlias}" : $subAlias;
+				$subResourceAlias = isset($resourceAlias) ? "{$resourceAlias}.{$subAlias}" : $subAlias;
 
-				$this->parseObjects($loadedResource, $subObjects, $subReadSettings, $subParentAlias, $error);
-				
+				$this->parseObjects($loadedResource, $subObjects, $subReadSettings, $subResourceAlias, $error);
 				if (isset($error)) {
 					return;
 				}
@@ -759,7 +764,7 @@ abstract class FRReadRequest extends FRRequest {
 		}
 
 		$this->frest->startTimingForLabel(FRTiming::POST_PROCESSING, $timerInstance);
-		
+
 		// use first object as reference to see what aliases have been set so far (used for computed aliases below)
 		$oldObjects = reset($objects);
 		$refObject = &$oldObjects;
@@ -945,22 +950,15 @@ abstract class FRReadRequest extends FRRequest {
 			$field = $resource->getFieldForAlias($alias);
 			$table = $resource->getTableForField($field);
 
-			if ($readSetting instanceof FRFieldReadSetting) {
+			if ($readSetting instanceof FRFieldReadSetting || $readSetting instanceof FRSingleResourceReadSetting) {
+				$tableAbbvr = $this->getTableAbbreviation($table);
 				$tableSpec = new FRTableSpec(
 					$table,
-					$this->getTableAbbreviation($table)
+					$tableAbbvr
 				);
 
 				$tableSpecs[$table] = $tableSpec;
-			}
-			else if ($readSetting instanceof FRSingleResourceReadSetting) {
-				$tableSpec = new FRTableSpec(
-					$table,
-					$this->getTableAbbreviation($table)
-				);
-
-				$tableSpecs[$table] = $tableSpec;
-			}
+			}			
 		}
 
 		if (count($tableSpecs) > 0) {
@@ -1004,8 +1002,9 @@ abstract class FRReadRequest extends FRRequest {
 
 	/**
 	 * @param string $table
+	 * @param string $alias
 	 */
-	protected function getTableAbbreviation($table) {
+	protected function getTableAbbreviation($table, $alias = NULL) {
 		if (!isset($this->tableAbbreviations[$table])) {
 			$abbreviationCount = count($this->tableAbbreviations);
 			$abbreviation = 't'.$abbreviationCount;
