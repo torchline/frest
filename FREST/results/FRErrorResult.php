@@ -29,6 +29,7 @@ class FRErrorResult extends FRResult {
 	const MissingRequiredFunctionParameter = 1420;
 	const MismatchingResourceFunctionMethod = 1421;
 	const PartialSyntaxNotSupported = 1422;
+	const NothingToDo = 1423;
 	
 	private static $descriptions = array(
 		self::InvalidField => 'There is an invalid field specified in the query',
@@ -53,6 +54,7 @@ class FRErrorResult extends FRResult {
 		self::MissingRequiredFunctionParameter => 'Additional parameters are required for the function',
 		self::MismatchingResourceFunctionMethod => 'The method used for the query does not match the method required by the function specified',
 		self::PartialSyntaxNotSupported => 'Partial syntax was attempted on a field that does not support it',
+		self::NothingToDo => 'There is nothing to do',
 	);
 
 	/** @var int */

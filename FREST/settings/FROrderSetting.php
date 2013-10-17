@@ -11,15 +11,20 @@ class FROrderSetting {
 	/** @var string */
 	protected $alias;
 
+	/** @var bool */
+	protected $ascendingEnabled = TRUE;
 
-	/**
-	 * @param string $alias
-	 */
-	public function __construct($alias) {
-		$this->alias = $alias;
-	}
+	/** @var bool */
+	protected $descendingEnabled = TRUE;
 
 	
+	public function __construct($alias, $ascendingEnabled = TRUE, $descendingEnabled = TRUE) {
+		$this->alias = $alias;
+		$this->ascendingEnabled = $ascendingEnabled;
+		$this->descendingEnabled = $descendingEnabled;
+	}
+
+
 	/**
 	 * @return string
 	 */
@@ -27,5 +32,17 @@ class FROrderSetting {
 		return $this->alias;
 	}
 
+	/**
+	 * @return boolean
+	 */
+	public function getAscendingEnabled() {
+		return $this->ascendingEnabled;
+	}
 
+	/**
+	 * @return boolean
+	 */
+	public function getDescendingEnabled() {
+		return $this->descendingEnabled;
+	}
 }

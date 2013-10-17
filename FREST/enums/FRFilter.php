@@ -4,7 +4,8 @@
 */
 
 class FRFilter {
-	const TIMESTAMP = 'timestamp';
+	const SQL_DATE_TO_TIMESTAMP = 'sqlDateToTimestamp';
+	const TIMESTAMP_TO_SQL_DATE = 'timestampToSQLDate';
 
 	private function __construct() {}
 }

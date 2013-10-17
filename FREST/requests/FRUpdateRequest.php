@@ -16,7 +16,6 @@ class FRUpdateRequest extends FRRequest {
 	/** @var array */
 	protected $tableUpdateSpecs;
 
-	
 	public function setupWithResource($resource, &$error = NULL) {
 		parent::setupWithResource($resource, $error);
 		if (isset($error)) {
@@ -25,6 +24,11 @@ class FRUpdateRequest extends FRRequest {
 
 		if (!isset($this->resourceID)) {
 			$error = new FRErrorResult(FRErrorResult::MissingResourceID, 400, '');
+			return;
+		}
+
+		if (!isset($this->parameters) || count($this->parameters) == 0) {
+			$error = new FRErrorResult(FRErrorResult::NothingToDo, 400, "No update parameters specified");
 			return;
 		}
 		

@@ -27,6 +27,7 @@ class FRConditionSpec {
 	 * @param int $variableType
 	 */
 	public function __construct($alias, $field, $value, $variableType) {
+		$this->alias = $alias;
 		$this->field = $field;
 		$this->value = $value;
 		$this->variableType = $variableType;

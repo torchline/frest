@@ -49,14 +49,14 @@ class FRSetting {
 	
 	
 	/*** CONDITION ***/
-	static function condition($alias, $ascending = TRUE, $descending = TRUE) {
-		return new FRConditionSetting($alias, $ascending, $descending);
+	static function condition($alias) {
+		return new FRConditionSetting($alias);
 	}
 
 
 	/*** ORDER ***/
-	static function order($alias) {
-		return new FROrderSetting($alias);
+	static function order($alias, $ascendingEnabled = TRUE, $descendingEnabled = TRUE) {
+		return new FROrderSetting($alias, $ascendingEnabled, $descendingEnabled);
 	}
 
 

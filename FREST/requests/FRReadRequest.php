@@ -630,7 +630,7 @@ abstract class FRReadRequest extends FRRequest {
 					foreach ($parameters as $field=>$parameter) {
 						if (isset($requiredAliases[$field])) {
 							$requiredAlias = $requiredAliases[$field];
-							$requiredAliasValuePlaceholder = $loadedResource->value($requiredAlias);
+							$requiredAliasValuePlaceholder = $loadedResource->aliasValue($requiredAlias);
 							$parameter = str_replace($requiredAliasValuePlaceholder, $object->$requiredAlias, $parameter);
 						}
 

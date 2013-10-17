@@ -6,6 +6,7 @@
 require_once(dirname(__FILE__).'/FRReadRequest.php');
 require_once(dirname(__FILE__).'/../results/FRMultiReadResult.php');
 require_once(dirname(__FILE__).'/../specs/FRConditionSpec.php');
+require_once(dirname(__FILE__).'/../specs/FROrderSpec.php');
 require_once(dirname(__FILE__) . '/../specs/FRQueryParameterSpec.php');
 require_once(dirname(__FILE__) . '/../functions/FRConditionFunction.php');
 
@@ -42,7 +43,7 @@ class FRMultiReadRequest extends FRReadRequest {
 		}
 
 		// Order Bys
-		$this->orderSpecs = $this->generateOrderSpecs($this->joinSpecs, $error);
+		$this->orderSpecs = $this->generateOrderSpecs($error);
 		if (isset($error)) {
 			return;
 		}
@@ -96,7 +97,7 @@ class FRMultiReadRequest extends FRReadRequest {
 		}
 
 		// Order By String
-		$orderBysString = $this->generateOrderString($this->orderSpecs, $error);
+		$orderByString = $this->generateOrderString($this->orderSpecs, $error);
 		if (isset($error)) {
 			return $error;
 		}
@@ -113,8 +114,26 @@ class FRMultiReadRequest extends FRReadRequest {
 		$pdo = $this->frest->getConfig()->getPDO();
 
 		// SQL
-		$sql = "SELECT {$fieldString} FROM {$tablesToReadString} {$joinsString} {$conditionString} {$orderBysString} LIMIT :_offset, :_limit";
-		$countSQL = "SELECT COUNT(0) AS Count FROM {$tablesToReadString} {$joinsString} {$conditionString}";
+		$sqlParts = array();
+		$countSQLParts = array();
+		$sqlParts[] = "SELECT {$fieldString} FROM {$tablesToReadString}";
+		$countSQLParts[] = "SELECT COUNT(0) AS Count FROM {$tablesToReadString}";
+		
+		if (strlen($joinsString)) {
+			$sqlParts[] = $joinsString;
+			$countSQLParts[] = $joinsString;
+		}
+		if (strlen($conditionString)) {
+			$sqlParts[] = $conditionString;
+			$countSQLParts[] = $conditionString;
+		}
+		if (strlen($orderByString)) {
+			$sqlParts[] = $orderByString;
+		}
+		$sqlParts[] = "LIMIT :_offset, :_limit";
+		
+		$sql = implode(' ', $sqlParts);
+		$countSQL = implode(' ', $countSQLParts);
 
 		$resultsStmt = $pdo->prepare($sql);
 		$countStmt = $pdo->prepare($countSQL);
@@ -414,19 +433,79 @@ class FRMultiReadRequest extends FRReadRequest {
 
 
 	/**
-	 * @param array $joinSpecs
 	 * @param FRErrorResult $error
 	 * @return array
 	 */
-	private function generateOrderSpecs(&$joinSpecs, &$error = NULL) {
+	private function generateOrderSpecs(&$error = NULL) {
 		$orderSpecs = array();
 		
 		if (isset($this->parameters['orderBy'])) {
-			$orderByParameter = $this->parameters['orderBy'];
+			$orderByParameterString = $this->parameters['orderBy'];
 			
-			// TODO: Order By
-			$error = new FRErrorResult(FRErrorResult::Config, 500, 'Order By has not yet been implemented.');
-			return NULL;
+			if (strlen($orderByParameterString) == 0) {
+				$error = new FRErrorResult(FRErrorResult::InvalidValue, 400, "An empty value was supplied to 'orderBy'");
+				return NULL;
+			}
+
+			$orderByParameters = explode(',', $orderByParameterString);
+
+			$orderSettings = $this->resource->getOrderSettings();
+			
+			foreach ($orderByParameters as $orderByParam) {
+				$pieces = explode(':', trim($orderByParam));
+				$alias = trim($pieces[0]);
+				
+				$fieldSetting = $this->resource->getFieldSettingForAlias($alias);
+				if (!isset($fieldSetting)) {
+					$error = new FRErrorResult(FRErrorResult::InvalidValue, 400, "The resource does not have a field named '{$alias}'");
+					return NULL;
+				}
+				
+				if (!isset($orderSettings[$alias])) {
+					$error = new FRErrorResult(FRErrorResult::InvalidValue, 400, "The resource does not allow ordering with '{$alias}'");
+					return NULL;
+				}
+				
+				/** @var FROrderSetting $orderSetting */
+				$orderSetting = $orderSettings[$alias];
+				
+				if (count($pieces) > 1) {
+					$userDirection = trim($pieces[1]);
+					
+					if (strcasecmp('ASC', $userDirection) === 0) {
+						$direction = 'ASC';
+					}
+					else if (strcasecmp('DESC', $userDirection) === 0) {
+						$direction = 'DESC';
+					}
+					else {
+						$error = new FRErrorResult(FRErrorResult::InvalidValue, 400, "Order direction '{$userDirection}' is not valid");
+						return NULL;
+					}
+				}
+				else {
+					if (!$orderSetting->getAscendingEnabled() && !$orderSetting->getDescendingEnabled()) {
+						$error = new FRErrorResult(FRErrorResult::InvalidValue, 400, "The resource does not allow ordering with '{$alias}'");
+						return NULL;
+					}
+					
+					$ascendingEnabled = $orderSetting->getAscendingEnabled();
+					
+					$direction = $ascendingEnabled ? 'ASC' : 'DESC';
+				}
+				
+				$field = $this->resource->getFieldForAlias($alias);
+				$table = $this->resource->getTableForField($field);
+				
+				$orderSpec = new FROrderSpec(
+					$alias,
+					$field,
+					$table,
+					$direction
+				);
+				
+				$orderSpecs[] = $orderSpec;
+			}
 		}
 		
 		if (count($orderSpecs) > 0) {
@@ -443,7 +522,27 @@ class FRMultiReadRequest extends FRReadRequest {
 	 * @return string
 	 */
 	private function generateOrderString($orderSpecs, &$error = NULL) {
-		return '';
+		$orderStrings = array();
+
+		if (isset($orderSpecs)) {
+			/** @var FROrderSpec $orderSpec */
+			foreach ($orderSpecs as $orderSpec) {
+				$field = $orderSpec->getField();
+				$table = $orderSpec->getTable();
+				$tableAbbrv = $this->getTableAbbreviation($table);
+				$direction = $orderSpec->getDirection();
+
+				$orderStrings[] = "{$tableAbbrv}.{$field} {$direction}";
+			}
+		}
+		
+		if (count($orderStrings) > 0) {
+			$orderString = 'ORDER BY '.implode(', ', $orderStrings);
+			return $orderString;
+		}
+		else {
+			return NULL;
+		}
 	}
 	
 

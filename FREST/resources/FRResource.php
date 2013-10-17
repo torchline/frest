@@ -136,7 +136,6 @@ abstract class FRResource {
 	 */
 	private $resourceFunctions;
 	
-
 	/**
 	 * Created dynamically to quicken table lookup by field
 	 * 
@@ -158,7 +157,6 @@ abstract class FRResource {
 	 */
 	private $aliasesByField;
 
-	
 	/**
 	 * @var FREST
 	 */
@@ -175,21 +173,32 @@ abstract class FRResource {
 	}
 
 
+	
+	
 	/**
 	 * @param string $date
 	 * @return int
 	 */
-	public function timestamp($date) {
+	public function sqlDateToTimestamp($date) {
 		return strtotime($date);
 	}
-	
 
+	/**
+	 * @param int $timestamp
+	 * @return string
+	 */
+	public function timestampToSqlDate($timestamp) {
+		return date('Y-m-d H:i:s', $timestamp);
+	}
+	
+	
+	
 
 	/**
 	 * @param string $alias
 	 * @return string
 	 */
-	public function value($alias)
+	public function aliasValue($alias)
 	{
 		return '{'.$alias.'}';
 	}
@@ -216,7 +225,7 @@ abstract class FRResource {
 		return FALSE;
 	}
 
-
+	
 	/**
 	 * @param string $field
 	 * 
@@ -342,7 +351,8 @@ abstract class FRResource {
 		$tableSetting = $tableSettings[$table];
 		
 		/** @var FRFieldSetting $firstFieldSetting */
-		$firstFieldSetting = reset($tableSetting->getFieldSettings());
+		$fieldSettings = $tableSetting->getFieldSettings();
+		$firstFieldSetting = reset($fieldSettings);
 		
 		return $firstFieldSetting->getField();
 	}
@@ -530,12 +540,12 @@ abstract class FRResource {
 					$field = $fieldSetting->getField();
 
 					if ($field !== $idField) {
-						$createSettings[] = FRSetting::update($alias);
+						$createSettings[] = FRSetting::create($alias);
 					}
 				}
 			}
 
-			$this->setUpdateSettings($createSettings);
+			$this->setCreateSettings($createSettings);
 		}
 		
 		return $this->createSettings;
@@ -698,24 +708,7 @@ abstract class FRResource {
 			$keyedFunctions[$key] = $function;
 		}
 
-		$this->resourceFunctions = $keyedFunctions;		
-	}
-
-	/**
-	 * @param stdClass $object
-	 * @return stdClass
-	 */
-	public function formatResourceObject($object) {
-		$newObject = new stdClass();
-
-		foreach ($object as $property=>$value) {
-			$alias = $this->getAliasForField($property);
-			if (isset($alias)) {
-				$newObject->$alias = $value;
-			}
-		}
-		
-		return $newObject;
+		$this->resourceFunctions = $keyedFunctions;
 	}
 
 	/**

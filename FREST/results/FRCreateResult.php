@@ -22,9 +22,11 @@ class FRCreateResult extends FRResult {
 
 
 	protected function generateOutputObject() {
-		$outputObject = new stdClass();
+		$outputObject = new stdClass;
 		$outputObject->status = $this->httpStatusCode;
-		$outputObject->id = $this->createdResourceID;
+		
+		$outputObject->response = new stdClass;
+		$outputObject->response->id = $this->createdResourceID;
 
 		return $outputObject;
 	}

@@ -11,22 +11,12 @@ class FRConditionSetting {
 	/** @var string */
 	protected $alias;
 	
-	/** @var bool */
-	protected $ascending = TRUE;
 	
-	/** @var bool */
-	protected $descending = TRUE;
-
-
 	/**
 	 * @param string $alias
-	 * @param bool $ascending
-	 * @param bool $descending
 	 */
-	public function __construct($alias, $ascending = TRUE, $descending = TRUE) {
+	public function __construct($alias) {
 		$this->alias = $alias;
-		$this->ascending = $ascending;
-		$this->descending = $descending;
 	}
 
 	
@@ -36,21 +26,4 @@ class FRConditionSetting {
 	public function getAlias() {
 		return $this->alias;
 	}
-
-	/**
-	 * @return boolean
-	 */
-	public function getAscending() {
-		return $this->ascending;
-	}
-
-	/**
-	 * @return boolean
-	 */
-	public function getDescending() {
-		return $this->descending;
-	}
-
-
-	
 }

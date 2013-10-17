@@ -9,34 +9,28 @@ class Messages extends FRResource {
 	
 	public function setup() {
 		$this->setTableSettings(array(
-			new FRTableSetting('Message', array(
-					new FRFieldSetting('id', 'ID', FRVariableType::INT),
-					new FRFieldSetting('sender', 'SenderUserID', FRVariableType::INT),
-					new FRFieldSetting('receiver', 'ReceiverUserID', FRVariableType::INT),
-					new FRFieldSetting('text', 'Text', FRVariableType::STRING),
-					new FRFieldSetting('type', 'Type', FRVariableType::INT),
-					new FRFieldSetting('episode', 'EpisodeID', FRVariableType::INT),
-					new FRFieldSetting('level', 'LevelID', FRVariableType::INT),
-					new FRFieldSetting('amount', 'Amount', FRVariableType::INT),
-					new FRFieldSetting('created', 'DateCreated', FRVariableType::STRING)
+			FRSetting::table('Message', array(
+					FRSetting::field('id', 'ID', FRVariableType::INT),
+					FRSetting::field('sender', 'SenderUserID', FRVariableType::INT),
+					FRSetting::field('receiver', 'ReceiverUserID', FRVariableType::INT),
+					FRSetting::field('text', 'Text', FRVariableType::STRING),
+					FRSetting::field('created', 'DateCreated', FRVariableType::STRING),
 				)
 			)
 		));
 
-		$this->modifyReadSettings(array(
-			new FRSingleResourceReadSetting('sender', 'Users', 'id', NULL, TRUE),
-			new FRSingleResourceReadSetting('receiver', 'Users', 'id', NULL, TRUE),
-			new FRFieldReadSetting('created', FRFilter::TIMESTAMP),
+		$this->setReadSettings(array(
+			FRSetting::readField('id'),
+			FRSetting::readResource('sender', 'Users', 'id'),
+			FRSetting::readResource('receiver', 'Users', 'id'),
+			FRSetting::readField('text'),
+			FRSetting::readField('created', FRFilter::SQL_DATE_TO_TIMESTAMP),
 		));
 
 		$this->setCreateSettings(array(
-			new FRCreateSetting('sender'),
-			new FRCreateSetting('receiver'),
-			new FRCreateSetting('text'),
-			new FRCreateSetting('type'),
-			new FRCreateSetting('episode'),
-			new FRCreateSetting('level'),
-			new FRCreateSetting('amount')
+			FRSetting::create('sender'),
+			FRSetting::create('receiver'),
+			FRSetting::create('text'),
 		));
 	}
 }

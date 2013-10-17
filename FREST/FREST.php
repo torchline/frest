@@ -53,11 +53,13 @@ class FREST {
 	 */
 	public function __construct($config = NULL, $resourceName = NULL, $resourceID = NULL, $parameters = NULL, $requestMethod = NULL, $resourceFunctionName = NULL) {
 		$this->startTimingForLabel(FRTiming::TOTAL, 'frest');
-
+		
 		if (!isset($config)) {
 			$config = FRConfig::fromFile($this);
 		}
 		$this->config = $config;
+		
+		$this->suppressHTTPStatusCodes = $this->config->getSuppressHTTPStatusCodes();
 
 		$this->startTimingForLabel(FRTiming::SETUP, 'frest');
 
@@ -117,7 +119,7 @@ class FREST {
 		else {
 			$actualMethod = $requestMethod;
 		}
-
+		
 		// check for forced method
 		switch ($actualMethod) {
 			case FRMethod::GET:
@@ -165,12 +167,9 @@ class FREST {
 		
 		if (isset($parameters['suppress_http_status_codes'])) {
 			$value = $parameters['suppress_http_status_codes'];
-			$castedValue = FRVariableType::castValue($value, FRVariableType::BOOL);
-			if ($castedValue) {
-				$this->suppressHTTPStatusCodes = $castedValue;
-			}
+			$this->suppressHTTPStatusCodes = FRVariableType::castValue($value, FRVariableType::BOOL);
 		}
-
+		
 		switch ($this->method) {
 			case FRMethod::GET: // read
 				if (isset($resourceID) && $resourceID != self::FORCED_NULL) {
@@ -213,22 +212,13 @@ class FREST {
 	public static function automatic() {
 		return new FREST();
 	}
-	public static function outputAutomatic() {
-		self::automatic()->outputResult();
-	}
 	
 	public static function single($id, $resourceName = NULL, $parameters = NULL, $requestMethod = NULL, $resourceFunctionName = NULL) {
 		return new FREST(NULL, $resourceName, $id, $parameters, $requestMethod, $resourceFunctionName);
 	}
-	public static function outputSingle($id, $resourceName = NULL, $parameters = NULL, $requestMethod = NULL, $resourceFunctionName = NULL) {
-		self::single($id, $resourceName, $parameters, $requestMethod, $resourceFunctionName)->outputResult();
-	}
 
 	public static function multiple($resourceName = NULL, $parameters = NULL, $requestMethod = NULL, $resourceFunctionName = NULL) {
 		return new FREST(NULL, $resourceName, self::FORCED_NULL, $parameters, $requestMethod, $resourceFunctionName);
-	}
-	public static function outputMultiple($resourceName = NULL, $parameters = NULL, $requestMethod = NULL, $resourceFunctionName = NULL) {
-		self::single($resourceName, $parameters, $requestMethod, $resourceFunctionName)->outputResult();
 	}
 	
 		

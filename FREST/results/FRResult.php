@@ -68,9 +68,9 @@ abstract class FRResult {
 		}
 		else {
 			$headerStatusCode = $frest->getSuppressHTTPStatusCodes() ? 200 : $this->httpStatusCode;
-			
+
 			header('HTTP/1.1: ' . $headerStatusCode);
-			header('Status: ' . $this->httpStatusCode);
+			header('Status: ' . $headerStatusCode);
 			header('Content-Type: ' . FROutputFormat::contentTypeString($format));
 
 			if (extension_loaded('zlib') && isset($_SERVER['HTTP_ACCEPT_ENCODING']) && strpos($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip') !== FALSE) {

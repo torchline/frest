@@ -4,6 +4,13 @@
 */
 
 class FRConfig {
+
+	/**
+	 * Forces all http header status codes to be 200 (actual status is supplied within the response)
+	 *
+	 * @var bool (default: FALSE)
+	 */
+	protected $suppressHTTPStatusCodes = FALSE;
 	
 	/**
 	 * Outputs timing and memory data alongside the response
@@ -68,12 +75,17 @@ class FRConfig {
 	protected $authPDO;
 
 
+	/**
+	 * @var array
+	 */
+	protected $configArray;
+
 	
 	
 	/**
 	 * @param PDO $pdo
 	 */
-	public function __construct($pdo) {
+	public function __construct($pdo = NULL) {
 		$this->resourceDirectory = 'resources';
 		$this->setPDO($pdo);
 	}
@@ -96,7 +108,7 @@ class FRConfig {
 		}
 		
 		include($path);
-				
+						
 		if (!isset($config)) {
 			throw new Exception("No config variable found in config file at '{$path}'", 500);
 		}
@@ -106,37 +118,9 @@ class FRConfig {
 			throw new Exception("No db config settings specified in config file at '{$path}'", 500);
 		}
 
-		$frest->stopTimingForLabel(FRTiming::SETUP, 'config');
-		$frest->startTimingForLabel(FRTiming::SQL, 'config');
-		
-		$pdo = self::pdoFromConfigArray($config['db']);
-		
-		$frest->stopTimingForLabel(FRTiming::SQL, 'config');
-		$frest->startTimingForLabel(FRTiming::SETUP, 'config');
-
 		// create FRConfig
-		$frestConfig = new FRConfig($pdo);
-		
-		if (isset($config['authDB'])) {
-			$authPDO = self::pdoFromConfigArray($config['authDB']);
-			$frestConfig->setAuthPDO($authPDO);
-		}
-
-		if (isset($config['showDiagnostics'])) {
-			$frestConfig->setShowDiagnostics($config['showDiagnostics']);
-		}
-
-		if (isset($config['checkResourceValidity'])) {
-			$frestConfig->setCheckResourceValidity($config['checkResourceValidity']);
-		}
-
-		if (isset($config['enableForcedMethod'])) {
-			$frestConfig->setEnableForcedMethod($config['enableForcedMethod']);
-		}
-
-		if (isset($config['resourceDirectory'])) {
-			$frestConfig->setResourceDirectory($config['resourceDirectory']);
-		}
+		$frestConfig = new FRConfig();
+		$frestConfig->setConfigArray($config);
 
 		$frest->stopTimingForLabel(FRTiming::SETUP, 'config');
 
@@ -179,6 +163,13 @@ class FRConfig {
 	 * @return \PDO
 	 */
 	public function getPDO() {
+		if (!isset($this->pdo)) {
+			if (isset($this->configArray['db'])) {
+				$pdo = self::pdoFromConfigArray($this->configArray['db']);
+				$this->setPDO($pdo);
+			}
+		}
+		
 		return $this->pdo;
 	}
 
@@ -186,22 +177,42 @@ class FRConfig {
 	 * @return \PDO
 	 */
 	public function getAuthPDO() {
+		if (!isset($this->authPDO)) {
+			if (isset($this->configArray['authDB'])) {
+				$authPDO = self::pdoFromConfigArray($this->configArray['authDB']);
+				$this->setAuthPDO($authPDO);
+			}
+		}
+		
 		return $this->authPDO;
 	}
 
 	/**
 	 * @return boolean
 	 */
-	public function getShowDiagnostics()
+	public function getSuppressHTTPStatusCodes() {
+		return $this->suppressHTTPStatusCodes;
+	}
+
+	/**
+	 * @param boolean $suppressHTTPStatusCodes
+	 */
+	public function setSuppressHTTPStatusCodes($suppressHTTPStatusCodes)
 	{
+		$this->suppressHTTPStatusCodes = $suppressHTTPStatusCodes;
+	}
+
+	/**
+	 * @return boolean
+	 */
+	public function getShowDiagnostics() {
 		return $this->showDiagnostics;
 	}
 
 	/**
 	 * @param boolean $showDiagnostics
 	 */
-	public function setShowDiagnostics($showDiagnostics)
-	{
+	public function setShowDiagnostics($showDiagnostics) {
 		$this->showDiagnostics = $showDiagnostics;
 	}
 	
@@ -242,6 +253,41 @@ class FRConfig {
 	 */
 	public function setAuthPDO($authPDO) {
 		$this->authPDO = $authPDO;
+	}
+
+	/**
+	 * @param array $configArray
+	 */
+	public function setConfigArray($configArray) {
+		$this->configArray = $configArray;
+
+		if (isset($configArray['suppressHTTPStatusCodes'])) {
+			$this->setSuppressHTTPStatusCodes($configArray['suppressHTTPStatusCodes']);
+		}
+
+		if (isset($configArray['showDiagnostics'])) {
+			$this->setShowDiagnostics($configArray['showDiagnostics']);
+		}
+
+		if (isset($configArray['checkResourceValidity'])) {
+			$this->setCheckResourceValidity($configArray['checkResourceValidity']);
+		}
+
+		if (isset($configArray['enableForcedMethod'])) {
+			$this->setEnableForcedMethod($configArray['enableForcedMethod']);
+		}
+
+		if (isset($configArray['resourceDirectory'])) {
+			$this->setResourceDirectory($configArray['resourceDirectory']);
+		}
+	}
+
+	/**
+	 * @return array
+	 */
+	public function getConfigArray()
+	{
+		return $this->configArray;
 	}
 	
 	

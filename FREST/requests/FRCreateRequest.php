@@ -249,7 +249,18 @@ class FRCreateRequest extends FRRequest {
 				$createSpecs[$alias] = $createSpec;
 			}
 			else if ($createSetting->getRequired()) {
-				$error = new FRErrorResult(FRErrorResult::MissingRequiredParams, 400, "Missing the '{$alias}' parameter.");
+				// get list of all parameters required but not set
+				$missingParameters = array();
+				/** @var FRCreateSetting $aCreateSetting */
+				foreach ($createSettings as $aCreateSetting) {
+					$alias = $aCreateSetting->getAlias();
+					
+					if (!isset($this->parameters[$alias]) && $aCreateSetting->getRequired()) {
+						$missingParameters[] = $alias;
+					}
+				}
+				$missingParametersString = implode(', ', $missingParameters);
+				$error = new FRErrorResult(FRErrorResult::MissingRequiredParams, 400, "Missing parameters: {$missingParametersString}");
 				return NULL;
 			}
 		}
@@ -357,7 +368,7 @@ class FRCreateRequest extends FRRequest {
 	 */
 	protected function checkForInvalidURLParameters(&$error = NULL) {
 		$createSettings = $this->resource->getCreateSettings();
-
+		
 		/** @var FRFieldSetting $idFieldSetting */
 		$idFieldName = $this->resource->getIDField();
 		$idAlias = $this->resource->getAliasForField($idFieldName);
