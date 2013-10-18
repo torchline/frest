@@ -33,7 +33,7 @@ class Countries extends FRResource {
 		$this->setReadSettings(array(
 			FRSetting::readField('code'),
 			FRSetting::readField('name'),
-			FRSetting::readField('continent')->default(FALSE),
+			FRSetting::readField('continent'),
 			FRSetting::readField('region', NULL, FALSE),
 			FRSetting::readField('surfaceArea', NULL, FALSE),
 			FRSetting::readField('independence', NULL, FALSE),
