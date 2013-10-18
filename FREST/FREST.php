@@ -168,7 +168,7 @@ class FREST {
 				case FRMethod::POST:
 				case FRMethod::PUT:
 				case FRMethod::DELETE:
-					$parameters = $_GET;
+					$parameters = $_POST;
 					break;
 				default:
 					$methodString = FRMethod::getString($actualMethod);
