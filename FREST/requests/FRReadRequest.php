@@ -120,7 +120,7 @@ abstract class FRReadRequest extends FRRequest {
 						return NULL;
 					}
 
-					/** @var FRSingleResourceReadSetting $readSetting */
+					/** @var FRSingularResourceReadSetting $readSetting */
 					$readSetting = $allReadSettings[$aliasFromPartial];
 
 					if (!isset($readSetting)) {
@@ -128,7 +128,7 @@ abstract class FRReadRequest extends FRRequest {
 						return NULL;
 					}
 
-					if (!($readSetting instanceof FRSingleResourceReadSetting) && !($readSetting instanceof FRMultiResourceReadSetting)) {
+					if (!($readSetting instanceof FRSingularResourceReadSetting) && !($readSetting instanceof FRPluralResourceReadSetting)) {
 						$error = new FRErrorResult(FRErrorResult::PartialSyntaxNotSupported, 400, "The field '{$aliasFromPartial}' on resource {$resourceName} does not respond to partial object syntax");
 						return NULL;
 					}
@@ -139,7 +139,7 @@ abstract class FRReadRequest extends FRRequest {
 						return NULL;
 					}
 
-					$allLoadedResourceReadSettings = $this->getLoadedResourceReadSettings($loadedResource, $readSetting, $error);
+					$allLoadedResourceReadSettings = $loadedResource->getReadSettings();				
 					if (isset($error)) {
 						return NULL;
 					}
@@ -152,14 +152,14 @@ abstract class FRReadRequest extends FRRequest {
 							$subAliasFromPartial = $this->parsePartialAliasFromString($subAlias, $deepAliases);
 
 							if (!isset($allLoadedResourceReadSettings[$subAliasFromPartial])) {
-								$error = new FRErrorResult(FRErrorResult::InvalidField, 400, "Invalid sub-field '{$subAlias}' specified in field '{$alias}' on resource {$resourceName}");
+								$error = new FRErrorResult(FRErrorResult::InvalidField, 400, "Invalid sub-field '{$subAlias}' specified in '{$alias}' on resource {$resourceName}");
 								return NULL;
 							}
 
 							/** @var FRReadSetting $subreadSetting */
 							$subReadSetting = $allLoadedResourceReadSettings[$subAliasFromPartial];
 							
-							if ($subReadSetting instanceof FRSingleResourceReadSetting) {
+							if ($subReadSetting instanceof FRSingularResourceReadSetting || $subReadSetting instanceof FRPluralResourceReadSetting) {
 								$subLoadedResource = $this->getLoadedResource($subReadSetting->getResourceName(), NULL, $error);
 								if (isset($error)) {
 									return NULL;
@@ -173,9 +173,6 @@ abstract class FRReadRequest extends FRRequest {
 								}
 
 								$this->partialSubReadSettings[$subPartialPrefix] = $subReadSettings;
-							}
-							else if ($subReadSetting instanceof FRMultiResourceReadSetting) {
-								die("Some multi resource partial syntaxing has not yet been implemented. Sorry!");
 							}
 							else {
 								$error = new FRErrorResult(FRErrorResult::PartialSyntaxNotSupported, 400, "The field '{$subAliasFromPartial}' on resource {$resourceName} does not support partial syntax");
@@ -227,7 +224,6 @@ abstract class FRReadRequest extends FRRequest {
 		$resourceName = get_class($resource);
 		
 		$allReadSettings = $resource->getReadSettings();
-		$class = get_class($resource);
 		
 		// find any aliases necessary for calculation of a computed alias that are not already defined in the read settings
 		foreach ($readSettings as $readSetting) {
@@ -241,25 +237,22 @@ abstract class FRReadRequest extends FRRequest {
 					
 					// TODO: error check required alias partial
 					
-					if (!isset($readSettings[$requiredAliasFromPartial]) && !isset($requiredReadSettings[$requiredAliasFromPartial])) {
+					if (!isset($readSettings[$requiredAliasFromPartial]) && !isset($requiredReadSettings[$requiredAliasFromPartial])) {  // if it's not already there
 						$requiredReadSetting = $allReadSettings[$requiredAliasFromPartial];
 						
 						$requiredReadSettings[$requiredAliasFromPartial] = $requiredReadSetting;
-						
-						$this->requiredAliasesAdded[$class][$requiredAliasFromPartial] = $requiredAlias;
+						$this->requiredAliasesAdded[$resourceName][$requiredAliasFromPartial] = $requiredAliasFromPartial;
 						
 						if (isset($subAliases)) {
-							if (!($requiredReadSetting instanceof FRSingleResourceReadSetting)) {
+							if (!($requiredReadSetting instanceof FRSingularResourceReadSetting)) {
 								$error = new FRErrorResult(FRErrorResult::Config, 500, "The required alias '{$requiredAliasFromPartial}' on resource {$resourceName} is not a resource and should contain partial object syntax");
 								return;
 							}
 
 							$loadedResource = $this->getLoadedResource($requiredReadSetting->getResourceName(), NULL, $error);
 
-							$loadedResourceReadSettings = $this->getLoadedResourceReadSettings($loadedResource, $readSetting, $error);
-							if (isset($error)) {
-								return;
-							}
+							//$loadedResourceReadSettings = $this->getLoadedResourceReadSettings($loadedResource, $readSetting, $error);
+							$loadedResourceReadSettings = $loadedResource->getReadSettings();
 							
 							// find read settings for partial syntax that were defined in required alias config
 							$subReadSettings = array();
@@ -269,6 +262,21 @@ abstract class FRReadRequest extends FRRequest {
 
 							$this->partialSubReadSettings[$requiredAliasFromPartial] = $subReadSettings;
 						}
+					}
+				}
+			}
+			else if ($readSetting instanceof FRPluralResourceReadSetting) {
+				$injectedRequiredAliases = $readSetting->getRequiredAliases();
+
+				foreach ($injectedRequiredAliases as $injectedAlias) {
+					if (!isset($allReadSettings[$injectedAlias])) {
+						$error = new FRErrorResult(FRErrorResult::Config, 500, "Injected alias '{$injectedAlias}' is invalid in resource {$resourceName}");
+						return;
+					}
+
+					if (!isset($readSettings[$injectedAlias]) && !isset($requiredReadSettings[$injectedAlias])) { // if it's not already there
+						$requiredReadSettings[$injectedAlias] = $allReadSettings[$injectedAlias];
+						$this->requiredAliasesAdded[$resourceName][$injectedAlias] = $injectedAlias;
 					}
 				}
 			}
@@ -297,7 +305,7 @@ abstract class FRReadRequest extends FRRequest {
 		$fieldSpecs = array();
 
 		foreach ($readSettings as $readSetting) {
-			if ($readSetting instanceof FRSingleResourceReadSetting) {
+			if ($readSetting instanceof FRSingularResourceReadSetting) {
 				$loadedResource = $this->getLoadedResource($readSetting->getResourceName(), $this, $error);
 				if (isset($error)) {
 					return NULL;
@@ -305,11 +313,20 @@ abstract class FRReadRequest extends FRRequest {
 
 				$alias = $readSetting->getAlias();
 				$partialKey = isset($resourceAlias) ? "{$resourceAlias}.{$alias}" : $alias;
-				$subReadSettings = isset($this->partialSubReadSettings[$partialKey]) ? $this->partialSubReadSettings[$partialKey] : $this->getLoadedResourceReadSettings($loadedResource, $readSetting, $error);
-				if (isset($error)) {
-					return NULL;
+				if (isset($this->partialSubReadSettings[$partialKey])) {
+					$subReadSettings = $this->partialSubReadSettings[$partialKey];
+					$this->addRequiredReadSettings($loadedResource, $subReadSettings, $error);
+					if (isset($error)) {
+						return NULL;
+					}
 				}
-				
+				else {
+					$subReadSettings = $this->getLoadedResourceReadSettings($loadedResource, $readSetting, $error);
+					if (isset($error)) {
+						return NULL;
+					}
+				}
+								
 				$subResourceAlias = isset($resourceAlias) ? "{$resourceAlias}-{$alias}" : $alias;
 				$subFieldSpecs = $this->generateFieldSpecs($loadedResource, $subReadSettings, TRUE, $subResourceAlias, $error);
 				if (isset($error)) {
@@ -399,9 +416,9 @@ abstract class FRReadRequest extends FRRequest {
 	protected function generateJoinSpecs($resource, $readSettings, $resourceAlias = NULL, &$error = NULL) {
 		$joinSpecs = array();
 
-		/** @var FRSingleResourceReadSetting $readSetting */
+		/** @var FRSingularResourceReadSetting $readSetting */
 		foreach ($readSettings as $alias=>$readSetting) {
-			if ($readSetting instanceof FRSingleResourceReadSetting) {
+			if ($readSetting instanceof FRSingularResourceReadSetting) {
 				$loadedResource = $this->getLoadedResource($readSetting->getResourceName(), $this, $error);
 				if (isset($error)) {
 					return NULL;
@@ -433,10 +450,20 @@ abstract class FRReadRequest extends FRRequest {
 				}
 				*/
 
-				$subReadSettings = isset($this->partialSubReadSettings[$alias]) ? $this->partialSubReadSettings[$alias] : $this->getLoadedResourceReadSettings($loadedResource, $readSetting, $error);
-				if (isset($error)) {
-					return NULL;
+				if (isset($this->partialSubReadSettings[$alias])) {
+					$subReadSettings = $this->partialSubReadSettings[$alias];
+					$this->addRequiredReadSettings($loadedResource, $subReadSettings, $error);
+					if (isset($error)) {
+						return NULL;
+					}
 				}
+				else {
+					$subReadSettings = $this->getLoadedResourceReadSettings($loadedResource, $readSetting, $error);
+					if (isset($error)) {
+						return NULL;
+					}
+				}
+				
 				
 				$subJoinSpecs = $this->generateJoinSpecs($loadedResource, $subReadSettings, $readSetting->getAlias(), $error);
 				if (isset($error)) {
@@ -607,8 +634,8 @@ abstract class FRReadRequest extends FRRequest {
 			if ($readSetting instanceof FRComputedReadSetting) {
 				$computedReadSettings[$alias] = $readSetting;
 			}
-			else if ($readSetting instanceof FRMultiResourceReadSetting) {
-				/** @var FRMultiResourceReadSetting $readSetting */
+			else if ($readSetting instanceof FRPluralResourceReadSetting) {
+				/** @var FRPluralResourceReadSetting $readSetting */
 				
 				$parameters = $readSetting->getParameters();
 				
@@ -630,7 +657,7 @@ abstract class FRReadRequest extends FRRequest {
 					foreach ($parameters as $field=>$parameter) {
 						if (isset($requiredAliases[$field])) {
 							$requiredAlias = $requiredAliases[$field];
-							$requiredAliasValuePlaceholder = $loadedResource->aliasValue($requiredAlias);
+							$requiredAliasValuePlaceholder = $loadedResource->injectValue($requiredAlias);
 							$parameter = str_replace($requiredAliasValuePlaceholder, $object->$requiredAlias, $parameter);
 						}
 
@@ -638,14 +665,14 @@ abstract class FRReadRequest extends FRRequest {
 					}
 
 					$this->frest->stopTimingForLabel(FRTiming::POST_PROCESSING, $timerInstance);
-
-					$request = new FRMultiReadRequest($this->frest, $requestParameters, NULL, $readSetting->getAlias());
+					
+					$request = new FRPluralReadRequest($this->frest, $requestParameters, NULL, $readSetting->getAlias());
 					$request->setupWithResource($loadedResource, $error);
 					if (isset($error)) {
 						return;
 					}
 					
-					/** @var FRMultiReadResult $result */
+					/** @var FRPluralReadResult $result */
 					$result = $request->generateResult();
 					if ($result instanceof FRErrorResult) {
 						$error = $result;
@@ -657,19 +684,28 @@ abstract class FRReadRequest extends FRRequest {
 					$object->$alias = $result->getResourceObjects();
 				}
 			}
-			else if ($readSetting instanceof FRSingleResourceReadSetting) {
-				/** @var FRSingleResourceReadSetting $readSetting */
+			else if ($readSetting instanceof FRSingularResourceReadSetting) {
+				/** @var FRSingularResourceReadSetting $readSetting */
 				
 				$loadedResource = $this->getLoadedResource($readSetting->getResourceName(), NULL, $error);
 				if (isset($error)) {
 					return;
 				}
 
-				$subReadSettings = isset($this->partialSubReadSettings[$partialSubKey]) ? $this->partialSubReadSettings[$partialSubKey] : $this->getLoadedResourceReadSettings($loadedResource, $readSetting, $error);
-				if (isset($error)) {
-					return;
+				if (isset($this->partialSubReadSettings[$partialSubKey])) {
+					$subReadSettings = $this->partialSubReadSettings[$partialSubKey];
+					$this->addRequiredReadSettings($loadedResource, $subReadSettings, $error);
+					if (isset($error)) {
+						return NULL;
+					}
 				}
-
+				else {
+					$subReadSettings = $this->getLoadedResourceReadSettings($loadedResource, $readSetting, $error);
+					if (isset($error)) {
+						return;
+					}
+				}
+				
 				$subObjects = array();
 				// remove table-prefixed properties on object as they should be on a sub-object instead
 				foreach ($objects as &$object) {
@@ -694,7 +730,7 @@ abstract class FRReadRequest extends FRRequest {
 							$object->$alias->$subAlias = $subValue;
 							unset($object->$subProperty);
 						}
-						else if ($subReadSetting instanceof FRSingleResourceReadSetting) { // move properties of object that should belong to subObject (only nests once? idk)
+						else if ($subReadSetting instanceof FRSingularResourceReadSetting) { // move properties of object that should belong to subObject (only nests once? idk)
 							$subLoadedResource = $this->getLoadedResource($subReadSetting->getResourceName(), NULL, $error);
 							if (isset($error)) {
 								return;
@@ -703,10 +739,20 @@ abstract class FRReadRequest extends FRRequest {
 							$subReadAlias = $subReadSetting->getAlias();
 							$partialDeepKey = isset($resourceAlias) ? "{$resourceAlias}.{$alias}.{$subReadAlias}" : "{$alias}.{$subReadAlias}";
 
-							$deepReadSettings = isset($this->partialSubReadSettings[$partialDeepKey]) ? $this->partialSubReadSettings[$partialDeepKey] : $this->getLoadedResourceReadSettings($subLoadedResource, $subReadSetting, $error);
-							if (isset($error)) {
-								return;
+							if (isset($this->partialSubReadSettings[$partialDeepKey])) {
+								$deepReadSettings = $this->partialSubReadSettings[$partialDeepKey];
+								$this->addRequiredReadSettings($subLoadedResource, $deepReadSettings, $error);
+								if (isset($error)) {
+									return NULL;
+								}
 							}
+							else {
+								$deepReadSettings = $this->getLoadedResourceReadSettings($subLoadedResource, $subReadSetting, $error);
+								if (isset($error)) {
+									return;
+								}
+							}
+							
 
 							foreach ($deepReadSettings as $deepReadSetting) {
 								if ($deepReadSetting instanceof FRFieldReadSetting) {
@@ -950,7 +996,7 @@ abstract class FRReadRequest extends FRRequest {
 			$field = $resource->getFieldForAlias($alias);
 			$table = $resource->getTableForField($field);
 
-			if ($readSetting instanceof FRFieldReadSetting || $readSetting instanceof FRSingleResourceReadSetting) {
+			if ($readSetting instanceof FRFieldReadSetting || $readSetting instanceof FRSingularResourceReadSetting) {
 				$tableAbbvr = $this->getTableAbbreviation($table);
 				$tableSpec = new FRTableSpec(
 					$table,
@@ -1023,11 +1069,11 @@ abstract class FRReadRequest extends FRRequest {
 	 */
 	protected function getLoadedResourceReadSettings($loadedResource, $responsibleReadSetting, &$error = NULL) {
 		$resourceName = get_class($loadedResource);
-		
+
 		if (!isset($this->loadedResourceReadSettings[$resourceName])) {
 			$parameters = array();
-			
-			if ($responsibleReadSetting instanceof FRSingleResourceReadSetting) {
+
+			if ($responsibleReadSetting instanceof FRSingularResourceReadSetting) {
 				$aliasesToRead = $responsibleReadSetting->getAliasesToRead();
 				if (isset($aliasesToRead)) {
 					$parameters['fields'] = implode(',', $aliasesToRead);
@@ -1039,17 +1085,18 @@ abstract class FRReadRequest extends FRRequest {
 					$parameters['fields'] = implode(',', $requiredAliases);
 				}
 			}
+
 			$readSettings = $this->generateReadSettings(
 				$loadedResource,
-				$parameters, 
+				$parameters,
 				NULL,
 				$error
 			);
-			
+
 			if (isset($error)) {
 				return NULL;
 			}
-			
+
 			$this->loadedResourceReadSettings[$resourceName] = $readSettings;
 		}
 		else {

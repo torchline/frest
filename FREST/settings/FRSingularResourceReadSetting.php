@@ -5,7 +5,7 @@
 
 require_once(dirname(__FILE__).'/FRReadSetting.php');
 
-class FRSingleResourceReadSetting extends FRReadSetting {
+class FRSingularResourceReadSetting extends FRReadSetting {
 	
 	/** @var string */
 	protected $resourceName;
@@ -33,9 +33,6 @@ class FRSingleResourceReadSetting extends FRReadSetting {
 		$this->aliasesToRead = $aliasesToRead;
 	}
 	
-	// TODO: aliasesToRead does not stay unique when having multiple instances of one table (e.g. two Users properties loaded will use aliasesToRead of first one defined in readSettings)
-	
-
 	/**
 	 * @return string
 	 */

@@ -3,13 +3,13 @@
  * Created by Brad Walker on 8/13/13 at 3:47 PM
 */
 
-require_once(dirname(__FILE__).'/../../FREST/resources/FRResource.php');
+require_once(dirname(__FILE__).'/../../../FREST/resources/FRResource.php');
 
 class Messages extends FRResource {
 	
 	public function setup() {
 		$this->setTableSettings(array(
-			FRSetting::table('Message', array(
+			FRSetting::table('message', array(
 					FRSetting::field('id', 'ID', FRVariableType::INT),
 					FRSetting::field('sender', 'SenderUserID', FRVariableType::INT),
 					FRSetting::field('receiver', 'ReceiverUserID', FRVariableType::INT),

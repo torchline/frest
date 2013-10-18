@@ -4,9 +4,9 @@
 */
 
 require_once(dirname(__FILE__).'/FRReadRequest.php');
-require_once(dirname(__FILE__).'/../results/FRSingleReadResult.php');
+require_once(dirname(__FILE__) . '/../results/FRSingularReadResult.php');
 
-class FRSingleReadRequest extends FRReadRequest {
+class FRSingularReadRequest extends FRReadRequest {
 	
 	public function setupWithResource($resource, &$error = NULL) {		
 		parent::setupWithResource($resource, $error);
@@ -32,7 +32,7 @@ class FRSingleReadRequest extends FRReadRequest {
 	}
 	
 	public function generateResult($forceRegen = FALSE) {
-		$this->frest->startTimingForLabel(FRTiming::PROCESSING, 'singleread');
+		$this->frest->startTimingForLabel(FRTiming::PROCESSING, 'singularread');
 
 		$otherResult = parent::generateResult($forceRegen);
 		if (isset($otherResult)) {
@@ -59,8 +59,8 @@ class FRSingleReadRequest extends FRReadRequest {
 		$tableWithID = $this->resource->getTableForField($idField);
 		$tableAbbrvWithID = $this->getTableAbbreviation($tableWithID);
 
-		$this->frest->stopTimingForLabel(FRTiming::PROCESSING, 'singleread');
-		$this->frest->startTimingForLabel(FRTiming::SQL, 'singleread');
+		$this->frest->stopTimingForLabel(FRTiming::PROCESSING, 'singularread');
+		$this->frest->startTimingForLabel(FRTiming::SQL, 'singularread');
 
 		$pdo = $this->frest->getConfig()->getPDO();
 
@@ -81,14 +81,14 @@ class FRSingleReadRequest extends FRReadRequest {
 			return new FRErrorResult(FRErrorResult::NoResults, 404, '');
 		}
 
-		$this->frest->stopTimingForLabel(FRTiming::SQL, 'singleread');
+		$this->frest->stopTimingForLabel(FRTiming::SQL, 'singularread');
 
 		$this->parseObjects($this->resource, $objects, $this->readSettings, NULL, $error);
 		if (isset($error)) {
 			return $error;
 		}
 		
-		$this->result = new FRSingleReadResult($objects[0]);
+		$this->result = new FRSingularReadResult($objects[0]);
 
 		return $this->result;
 	}

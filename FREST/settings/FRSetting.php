@@ -7,8 +7,8 @@ require_once(dirname(__FILE__).'/../settings/FRTableSetting.php');
 require_once(dirname(__FILE__).'/../settings/FRFieldSetting.php');
 
 require_once(dirname(__FILE__).'/../settings/FRFieldReadSetting.php');
-require_once(dirname(__FILE__).'/../settings/FRSingleResourceReadSetting.php');
-require_once(dirname(__FILE__).'/../settings/FRMultiResourceReadSetting.php');
+require_once(dirname(__FILE__) . '/../settings/FRSingularResourceReadSetting.php');
+require_once(dirname(__FILE__) . '/../settings/FRPluralResourceReadSetting.php');
 require_once(dirname(__FILE__).'/../settings/FRComputedReadSetting.php');
 
 require_once(dirname(__FILE__).'/../settings/FRConditionSetting.php');
@@ -36,11 +36,11 @@ class FRSetting {
 	}
 
 	static function readResource($alias, $resourceName, $resourceJoinAlias, $aliasesToRead = NULL, $default = FALSE) {
-		return new FRSingleResourceReadSetting($alias, $resourceName, $resourceJoinAlias, $aliasesToRead, $default);
+		return new FRSingularResourceReadSetting($alias, $resourceName, $resourceJoinAlias, $aliasesToRead, $default);
 	}
 
 	static function readResources($alias, $resourceName, $parameters, $default = FALSE) {
-		return new FRMultiResourceReadSetting($alias, $resourceName, $parameters, $default);
+		return new FRPluralResourceReadSetting($alias, $resourceName, $parameters, $default);
 	}
 
 	static function readFunction($alias, $function, $requiredAliases = NULL, $default = FALSE) {

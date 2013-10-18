@@ -21,8 +21,8 @@ class Users extends FRResource {
 		$this->modifyReadSettings(array(
 			FRSetting::readResource('rank', 'Ranks', 'id', NULL, TRUE),
 			FRSetting::readField('modified', FRFilter::TIMESTAMP),
-			FRSetting::readResources('inbox', 'Messages', array('fields' => 'id,text,sender(id,name,rank(name))', 'receiver' => $this->aliasValue('id'))),
-			FRSetting::readResources('outbox', 'Messages', array('fields' => 'id,text,receiver(id,name)', 'sender' => $this->aliasValue('id')))
+			FRSetting::readResources('inbox', 'Messages', array('fields' => 'id,text,sender(id,name,rank(name))', 'receiver' => $this->injectValue('id'))),
+			FRSetting::readResources('outbox', 'Messages', array('fields' => 'id,text,receiver(id,name)', 'sender' => $this->injectValue('id')))
 		));
 	}
 }

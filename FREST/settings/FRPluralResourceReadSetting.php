@@ -6,9 +6,9 @@
 require_once(dirname(__FILE__).'/FRReadSetting.php');
 
 /**
- * Class FRMultiResourceReadSetting
+ * Class FRPluralResourceReadSetting
  */
-class FRMultiResourceReadSetting extends FRReadSetting {
+class FRPluralResourceReadSetting extends FRReadSetting {
 
 	/** @var string */
 	protected $resourceName;
@@ -28,24 +28,15 @@ class FRMultiResourceReadSetting extends FRReadSetting {
 	 */
 	public function __construct($alias, $resourceName, $parameters, $default = FALSE) {
 		$this->alias = $alias;
-		$this->default = $default;
-		
 		$this->resourceName = $resourceName;
 		$this->parameters = $parameters;
-
-		$this->requiredAliases = array();
-		
-		// an alias should be surrounded by these two strings
-		$leftDelimiter = '{';
-		$rightDelimiter = '}';
+		$this->default = $default;
 		
 		foreach ($parameters as $field=>$parameter) {
-			$leftDelimPos = strpos($parameter, $leftDelimiter);
-			$rightDelimPos = strpos($parameter, $rightDelimiter);
-			
-			if ($leftDelimPos !== FALSE && $rightDelimPos !== FALSE && $rightDelimPos > $leftDelimPos + 1) {
-				$alias = substr($parameter, $leftDelimPos + 1, $rightDelimPos - ($leftDelimPos + 1));
-				$this->requiredAliases[$field] = $alias;
+			$injectedAlias = FRResource::aliasFromInjectedValue($parameter);
+
+			if (isset($injectedAlias)) {
+				$this->requiredAliases[$field] = $injectedAlias;
 			}
 		}
 	}

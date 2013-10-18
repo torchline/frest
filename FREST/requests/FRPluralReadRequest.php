@@ -4,13 +4,13 @@
 */
 
 require_once(dirname(__FILE__).'/FRReadRequest.php');
-require_once(dirname(__FILE__).'/../results/FRMultiReadResult.php');
+require_once(dirname(__FILE__) . '/../results/FRPluralReadResult.php');
 require_once(dirname(__FILE__).'/../specs/FRConditionSpec.php');
 require_once(dirname(__FILE__).'/../specs/FROrderSpec.php');
 require_once(dirname(__FILE__) . '/../specs/FRQueryParameterSpec.php');
 require_once(dirname(__FILE__) . '/../functions/FRConditionFunction.php');
 
-class FRMultiReadRequest extends FRReadRequest {
+class FRPluralReadRequest extends FRReadRequest {
 
 	/** @var array */
 	protected $queryParameterSpecs;
@@ -59,7 +59,7 @@ class FRMultiReadRequest extends FRReadRequest {
 	}
 	
 	public function generateResult($forceRegen = FALSE) {
-		$this->frest->startTimingForLabel(FRTiming::PROCESSING, 'multiread');
+		$this->frest->startTimingForLabel(FRTiming::PROCESSING, 'pluralread');
 
 		$otherResult = parent::generateResult($forceRegen);
 		if (isset($otherResult)) {
@@ -108,8 +108,8 @@ class FRMultiReadRequest extends FRReadRequest {
 			return $error;
 		}
 
-		$this->frest->stopTimingForLabel(FRTiming::PROCESSING, 'multiread');
-		$this->frest->startTimingForLabel(FRTiming::SQL, 'multiread');
+		$this->frest->stopTimingForLabel(FRTiming::PROCESSING, 'pluralread');
+		$this->frest->startTimingForLabel(FRTiming::SQL, 'pluralread');
 
 		$pdo = $this->frest->getConfig()->getPDO();
 
@@ -134,7 +134,7 @@ class FRMultiReadRequest extends FRReadRequest {
 		
 		$sql = implode(' ', $sqlParts);
 		$countSQL = implode(' ', $countSQLParts);
-
+		
 		$resultsStmt = $pdo->prepare($sql);
 		$countStmt = $pdo->prepare($countSQL);
 
@@ -172,14 +172,14 @@ class FRMultiReadRequest extends FRReadRequest {
 		$countResult = $countStmt->fetchAll(PDO::FETCH_ASSOC);
 		$count = intval($countResult[0]['Count']);
 
-		$this->frest->stopTimingForLabel(FRTiming::SQL, 'multiread');
+		$this->frest->stopTimingForLabel(FRTiming::SQL, 'pluralread');
 
 		$this->parseObjects($this->resource, $objects, $this->readSettings, NULL, $error);
 		if (isset($error)) {
 			return $error;
 		}
 
-		$this->result = new FRMultiReadResult($objects, $limit, $offset, $count);
+		$this->result = new FRPluralReadResult($objects, $limit, $offset, $count);
 
 		return $this->result;
 	}
@@ -615,18 +615,18 @@ class FRMultiReadRequest extends FRReadRequest {
 	 * @return bool
 	 */
 	protected function checkForInvalidURLParameters(&$error = NULL) {		
-		$readSettings = $this->resource->getReadSettings();
-
+		$conditionSettings = $this->resource->getConditionSettings();
+		
 		foreach($this->parameters as $parameter=>$value) {
 			if (is_array($value)) {
 				$error = new FRErrorResult(FRErrorResult::InvalidUsage, 400, "Parameter values (specifically '{$parameter}') are not allowed to be arrays");
 				return FALSE;
 			}
 
-			$isValidAlias = isset($readSettings[$parameter]);
+			$isValidConditionAlias = isset($conditionSettings[$parameter]);
 			$isValidMiscParam = isset($this->miscParameters[$parameter]);
 
-			if ($isValidAlias) {
+			if ($isValidConditionAlias) {
 				if ($isValidMiscParam) {
 					$error = new FRErrorResult(FRErrorResult::Config, 500, "The alias '{$parameter}' is reserved for internal use and must not be used");
 					return FALSE;

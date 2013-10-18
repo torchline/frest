@@ -156,12 +156,12 @@ final class FRVariableType {
 	public static function castValue($value, $variableType) {
 		switch ($variableType) {
 			case FRVariableType::BOOL:
-				$isFalseBool = $value === FALSE || $value === '0' ||  $value === 0 || strcasecmp($value, 'false') === 0;
+				$isFalseBool = $value === FALSE || $value === '0' ||  $value === 0 || strcasecmp($value, 'false') === 0 || strcasecmp($value, 'f') === 0;
 				if ($isFalseBool) {
 					return FALSE;
 				}
 
-				$isTrueBool = $value === TRUE || $value === '1' || $value === 1 || strcasecmp($value, 'true') === 0;
+				$isTrueBool = $value === TRUE || $value === '1' || $value === 1 || strcasecmp($value, 'true') === 0 || strcasecmp($value, 't') === 0;
 				if ($isTrueBool) {
 					return TRUE;
 				}

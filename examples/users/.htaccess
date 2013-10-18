@@ -5,6 +5,6 @@ Options -MultiViews
 # Normally a PHP framework will do this for you. This is just a raw example.
 <IfModule mod_rewrite.c>
     RewriteEngine on
-    RewriteCond $1 !^(index\.php|images|stylesheets|scripts|robots\.txt)
+    RewriteCond $1 !^(index\.php)
     RewriteRule ^(.*)$ index.php/$1 [L]
 </IfModule>

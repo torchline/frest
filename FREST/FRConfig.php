@@ -128,13 +128,14 @@ class FRConfig {
 	}
 
 	private static function pdoFromConfigArray($configArray) {
-		$dbType = $configArray['type'];
+		$dbType = isset($configArray['type']) ? $configArray['type'] : 'mysql';
 		$dbName = $configArray['name'];
-		$dbHost = $configArray['host'];
-		$dbUsername = $configArray['username'];
-		$dbPassword = $configArray['password'];
-		
-		return new PDO("{$dbType}:dbname={$dbName};host={$dbHost}", $dbUsername, $dbPassword);
+		$dbHost = isset($configArray['host']) ? $configArray['host'] : 'localhost';
+		$dbUsername = isset($configArray['username']) ? $configArray['username'] : 'root';
+		$dbPassword = isset($configArray['password']) ? $configArray['password'] : '';
+		$dbCharset = isset($configArray['charset']) ? $configArray['charset'] : 'utf8';
+
+		return new PDO("{$dbType}:dbname={$dbName};host={$dbHost};charset={$dbCharset}", $dbUsername, $dbPassword);
 	}
 	
 	

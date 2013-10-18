@@ -5,7 +5,7 @@
 
 require_once(dirname(__FILE__).'/FRResult.php');
 
-class FRSingleReadResult extends FRResult {
+class FRSingularReadResult extends FRResult {
 	
 	/** @var stdClass */
 	protected $resourceObject;

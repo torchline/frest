@@ -24,8 +24,8 @@ class Messages extends FRResource {
 		));
 
 		$this->modifyReadSettings(array(
-			new FRSingleResourceReadSetting('sender', 'Users', 'id', NULL, TRUE),
-			new FRSingleResourceReadSetting('receiver', 'Users', 'id', NULL, TRUE),
+			new FRSingularResourceReadSetting('sender', 'Users', 'id', NULL, TRUE),
+			new FRSingularResourceReadSetting('receiver', 'Users', 'id', NULL, TRUE),
 			new FRFieldReadSetting('created', FRFilter::TIMESTAMP),
 		));
 

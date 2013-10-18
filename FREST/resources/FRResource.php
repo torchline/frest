@@ -30,6 +30,20 @@ abstract class FRResource {
 	private $maxLimit = 25;
 
 	/**
+	 * Whether or not to allow requests searching for a resource of a specific ID (e.g. /api/users/1)
+	 *
+	 * @var int (optional)
+	 */
+	private $allowsSingularReads = TRUE;
+
+	/**
+	 * Whether or not to allow requests searching for a set of resources (e.g. /api/users)
+	 *
+	 * @var int (optional)
+	 */
+	private $allowsPluralReads = TRUE;
+
+	/**
 	 * An associative array with keys indicating the name of the SQL table associated
 	 * to this resource and value being an array of arrays keyed by the SQL field name
 	 * and valued with an array of configuration options for each field. 
@@ -198,9 +212,22 @@ abstract class FRResource {
 	 * @param string $alias
 	 * @return string
 	 */
-	public function aliasValue($alias)
+	public function injectValue($alias)
 	{
-		return '{'.$alias.'}';
+		return '{INJECT::'.$alias.'}';
+	}
+
+	/**
+	 * @param string $injectedValue
+	 * @return null|string
+	 */
+	public static function aliasFromInjectedValue($injectedValue) {
+		if (strpos($injectedValue, '{INJECT::') === 0 && substr($injectedValue, -1) === '}') {
+			return substr($injectedValue, 9, -1);
+		}
+		else {
+			return NULL;
+		}
 	}
 	
 	
@@ -273,7 +300,7 @@ abstract class FRResource {
 				}
 			}
 		}
-
+		
 		return isset($this->fieldsByAlias[$alias]) ? $this->fieldsByAlias[$alias] : NULL;
 	}
 	
@@ -446,6 +473,39 @@ abstract class FRResource {
 		return $this->maxLimit;
 	}
 
+	/**
+	 * @param int $allowsPluralReads
+	 */
+	public function setAllowsPluralReads($allowsPluralReads)
+	{
+		$this->allowsPluralReads = $allowsPluralReads;
+	}
+
+	/**
+	 * @return int
+	 */
+	public function getAllowsPluralReads()
+	{
+		return $this->allowsPluralReads;
+	}
+
+	/**
+	 * @param int $allowsSingularReads
+	 */
+	public function setAllowsSingularReads($allowsSingularReads)
+	{
+		$this->allowsSingularReads = $allowsSingularReads;
+	}
+
+	/**
+	 * @return int
+	 */
+	public function getAllowsSingularReads()
+	{
+		return $this->allowsSingularReads;
+	}
+
+	
 	/**
 	 * @return array
 	 */

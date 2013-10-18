@@ -5,7 +5,7 @@
 
 require_once(dirname(__FILE__).'/FRResult.php');
 
-class FRMultiReadResult extends FRResult {
+class FRPluralReadResult extends FRResult {
 
 	/** @var int */
 	protected $limit;

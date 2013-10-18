@@ -30,6 +30,7 @@ class FRErrorResult extends FRResult {
 	const MismatchingResourceFunctionMethod = 1421;
 	const PartialSyntaxNotSupported = 1422;
 	const NothingToDo = 1423;
+	const FailedLoadingResource = 1424;
 	
 	private static $descriptions = array(
 		self::InvalidField => 'There is an invalid field specified in the query',
@@ -55,6 +56,7 @@ class FRErrorResult extends FRResult {
 		self::MismatchingResourceFunctionMethod => 'The method used for the query does not match the method required by the function specified',
 		self::PartialSyntaxNotSupported => 'Partial syntax was attempted on a field that does not support it',
 		self::NothingToDo => 'There is nothing to do',
+		self::FailedLoadingResource => 'There is an error in the resource file',
 	);
 
 	/** @var int */
