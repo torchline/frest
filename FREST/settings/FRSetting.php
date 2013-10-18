@@ -25,7 +25,7 @@ class FRSetting {
 		return new FRTableSetting($table, $fieldSettings);
 	}
 
-	static function field($alias, $field, $variableType) {
+	static function field($alias, $field, $variableType = FRVariableType::STRING) {
 		return new FRFieldSetting($alias, $field, $variableType);
 	}
 	

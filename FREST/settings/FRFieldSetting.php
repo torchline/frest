@@ -23,7 +23,7 @@ class FRFieldSetting {
 	 * @param string $field
 	 * @param int $variableType
 	 */
-	public function __construct($alias, $field, $variableType) {
+	public function __construct($alias, $field, $variableType = FRVariableType::STRING) {
 		$this->alias = $alias;
 		$this->field = $field;
 		$this->variableType = $variableType;

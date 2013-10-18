@@ -5,6 +5,8 @@
 
 require_once('../../FREST/FREST.php');
 
-$resource = explode('/', explode('?', $_SERVER['REQUEST_URI'])[0])[3];
+$parts = explode('?', $_SERVER['REQUEST_URI']);
+$pathParts = explode('/', $parts[0]);
+$resource = $pathParts[3];
 
 FREST::all($resource)->outputResult();
