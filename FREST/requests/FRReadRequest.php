@@ -100,95 +100,100 @@ abstract class FRReadRequest extends FRRequest {
 		if (isset($parameters['fields'])) {
 			$userSpecifiedAliases = $this->parseFieldParameterList($parameters['fields']);
 			
-			foreach ($userSpecifiedAliases as $alias) {
-				$readSetting = isset($allReadSettings[$alias]) ? $allReadSettings[$alias] : NULL;
+			if (count($userSpecifiedAliases) == 1 && $userSpecifiedAliases[0] == '*') { // if wildcard, then all fields
+				$readSettings = $allReadSettings;
+			}
+			else {
+				foreach ($userSpecifiedAliases as $alias) {
+					$readSetting = isset($allReadSettings[$alias]) ? $allReadSettings[$alias] : NULL;
 
-				if (isset($readSetting)) {
-					$readSettings[$alias] = $readSetting;
-				}
-				else {
-					// check for settings for partial object alias
-					$aliasFromPartial = $this->parsePartialAliasFromString($alias, $definedSubAliases);
-					
-					if (!isset($definedSubAliases)) {
-						$error = new FRErrorResult(FRErrorResult::InvalidField, 400, "No partial fields passed but partial syntax attempted in field '{$alias}' on resource {$resourceName}");
-						return NULL;
+					if (isset($readSetting)) {
+						$readSettings[$alias] = $readSetting;
 					}
-					
-					if (!isset($aliasFromPartial)) {
-						$error = new FRErrorResult(FRErrorResult::InvalidField, 400, "Invalid field name specified in 'fields' parameter: '{$alias}' on resource {$resourceName}");
-						return NULL;
-					}
+					else {
+						// check for settings for partial object alias
+						$aliasFromPartial = $this->parsePartialAliasFromString($alias, $definedSubAliases);
 
-					/** @var FRSingularResourceReadSetting $readSetting */
-					$readSetting = $allReadSettings[$aliasFromPartial];
-
-					if (!isset($readSetting)) {
-						$error = new FRErrorResult(FRErrorResult::InvalidField, 400, "Invalid field name specified in 'fields' parameter: '{$aliasFromPartial}' on resource {$resourceName}");
-						return NULL;
-					}
-
-					if (!($readSetting instanceof FRSingularResourceReadSetting) && !($readSetting instanceof FRPluralResourceReadSetting)) {
-						$error = new FRErrorResult(FRErrorResult::PartialSyntaxNotSupported, 400, "The field '{$aliasFromPartial}' on resource {$resourceName} does not respond to partial object syntax");
-						return NULL;
-					}
-
-					// load external resource referenced by this resource
-					$loadedResource = $this->getLoadedResource($readSetting->getResourceName(), $this, $error);
-					if (isset($error)) {
-						return NULL;
-					}
-
-					$allLoadedResourceReadSettings = $loadedResource->getReadSettings();				
-					if (isset($error)) {
-						return NULL;
-					}
-
-					$loadedResourceReadSettings = array();
-
-					// check if the referenced resource has all partial fields specified
-					foreach ($definedSubAliases as $subAlias) {
-						if (!isset($allLoadedResourceReadSettings[$subAlias])) {
-							$subAliasFromPartial = $this->parsePartialAliasFromString($subAlias, $deepAliases);
-
-							if (!isset($allLoadedResourceReadSettings[$subAliasFromPartial])) {
-								$error = new FRErrorResult(FRErrorResult::InvalidField, 400, "Invalid sub-field '{$subAlias}' specified in '{$alias}' on resource {$resourceName}");
-								return NULL;
-							}
-
-							/** @var FRReadSetting $subreadSetting */
-							$subReadSetting = $allLoadedResourceReadSettings[$subAliasFromPartial];
-							
-							if ($subReadSetting instanceof FRSingularResourceReadSetting || $subReadSetting instanceof FRPluralResourceReadSetting) {
-								$subLoadedResource = $this->getLoadedResource($subReadSetting->getResourceName(), NULL, $error);
-								if (isset($error)) {
-									return NULL;
-								}
-
-								$subPartialPrefix = isset($partialPrefix) ? "{$partialPrefix}.{$aliasFromPartial}.{$subAliasFromPartial}" : "{$aliasFromPartial}.{$subAliasFromPartial}";
-								
-								$subReadSettings = $this->generateReadSettings($subLoadedResource, array('fields' => implode(',', $deepAliases)), $subPartialPrefix, $error);
-								if (isset($error)) {
-									return NULL;
-								}
-
-								$this->partialSubReadSettings[$subPartialPrefix] = $subReadSettings;
-							}
-							else {
-								$error = new FRErrorResult(FRErrorResult::PartialSyntaxNotSupported, 400, "The field '{$subAliasFromPartial}' on resource {$resourceName} does not support partial syntax");
-								return NULL;
-							}
-							
-							$subAlias = $subAliasFromPartial;
+						if (!isset($definedSubAliases)) {
+							$error = new FRErrorResult(FRErrorResult::InvalidField, 400, "No partial fields passed but partial syntax attempted in field '{$alias}' on resource {$resourceName}");
+							return NULL;
 						}
 
-						$loadedResourceReadSettings[$subAlias] = $allLoadedResourceReadSettings[$subAlias];
-					}
+						if (!isset($aliasFromPartial)) {
+							$error = new FRErrorResult(FRErrorResult::InvalidField, 400, "Invalid field name specified in 'fields' parameter: '{$alias}' on resource {$resourceName}");
+							return NULL;
+						}
 
-					$readSettings[$aliasFromPartial] = $readSetting;
-					
-					$loadedPartialKey = isset($partialPrefix) ? "{$partialPrefix}.{$aliasFromPartial}" : $aliasFromPartial;
-					$this->partialSubReadSettings[$loadedPartialKey] = $loadedResourceReadSettings;
+						/** @var FRSingularResourceReadSetting $readSetting */
+						$readSetting = $allReadSettings[$aliasFromPartial];
+
+						if (!isset($readSetting)) {
+							$error = new FRErrorResult(FRErrorResult::InvalidField, 400, "Invalid field name specified in 'fields' parameter: '{$aliasFromPartial}' on resource {$resourceName}");
+							return NULL;
+						}
+
+						if (!($readSetting instanceof FRSingularResourceReadSetting) && !($readSetting instanceof FRPluralResourceReadSetting)) {
+							$error = new FRErrorResult(FRErrorResult::PartialSyntaxNotSupported, 400, "The field '{$aliasFromPartial}' on resource {$resourceName} does not respond to partial object syntax");
+							return NULL;
+						}
+
+						// load external resource referenced by this resource
+						$loadedResource = $this->getLoadedResource($readSetting->getResourceName(), $this, $error);
+						if (isset($error)) {
+							return NULL;
+						}
+
+						$allLoadedResourceReadSettings = $loadedResource->getReadSettings();
+						if (isset($error)) {
+							return NULL;
+						}
+
+						$loadedResourceReadSettings = array();
+
+						// check if the referenced resource has all partial fields specified
+						foreach ($definedSubAliases as $subAlias) {
+							if (!isset($allLoadedResourceReadSettings[$subAlias])) {
+								$subAliasFromPartial = $this->parsePartialAliasFromString($subAlias, $deepAliases);
+
+								if (!isset($allLoadedResourceReadSettings[$subAliasFromPartial])) {
+									$error = new FRErrorResult(FRErrorResult::InvalidField, 400, "Invalid sub-field '{$subAlias}' specified in '{$alias}' on resource {$resourceName}");
+									return NULL;
+								}
+
+								/** @var FRReadSetting $subreadSetting */
+								$subReadSetting = $allLoadedResourceReadSettings[$subAliasFromPartial];
+
+								if ($subReadSetting instanceof FRSingularResourceReadSetting || $subReadSetting instanceof FRPluralResourceReadSetting) {
+									$subLoadedResource = $this->getLoadedResource($subReadSetting->getResourceName(), NULL, $error);
+									if (isset($error)) {
+										return NULL;
+									}
+
+									$subPartialPrefix = isset($partialPrefix) ? "{$partialPrefix}.{$aliasFromPartial}.{$subAliasFromPartial}" : "{$aliasFromPartial}.{$subAliasFromPartial}";
+
+									$subReadSettings = $this->generateReadSettings($subLoadedResource, array('fields' => implode(',', $deepAliases)), $subPartialPrefix, $error);
+									if (isset($error)) {
+										return NULL;
+									}
+
+									$this->partialSubReadSettings[$subPartialPrefix] = $subReadSettings;
+								}
+								else {
+									$error = new FRErrorResult(FRErrorResult::PartialSyntaxNotSupported, 400, "The field '{$subAliasFromPartial}' on resource {$resourceName} does not support partial syntax");
+									return NULL;
+								}
+
+								$subAlias = $subAliasFromPartial;
+							}
+
+							$loadedResourceReadSettings[$subAlias] = $allLoadedResourceReadSettings[$subAlias];
+						}
+
+						$readSettings[$aliasFromPartial] = $readSetting;
+
+						$loadedPartialKey = isset($partialPrefix) ? "{$partialPrefix}.{$aliasFromPartial}" : $aliasFromPartial;
+						$this->partialSubReadSettings[$loadedPartialKey] = $loadedResourceReadSettings;
+					}
 				}
 			}
 		}
@@ -1130,7 +1135,7 @@ abstract class FRReadRequest extends FRRequest {
 					break;
 				case ',':
 					if ($parenthesesDepth <= 0) {
-						$parameterList[] = substr($paramterListString, $paramStartIndex, $i - $paramStartIndex);
+						$parameterList[] = trim(substr($paramterListString, $paramStartIndex, $i - $paramStartIndex));
 						$paramStartIndex = $i + 1;
 					}
 					break;
@@ -1138,7 +1143,7 @@ abstract class FRReadRequest extends FRRequest {
 					break;
 			}
 		}
-		$parameterList[] = substr($paramterListString, $paramStartIndex, $i - $paramStartIndex);
+		$parameterList[] = trim(substr($paramterListString, $paramStartIndex, $i - $paramStartIndex));
 		
 		return $parameterList;
 	}

@@ -47,8 +47,8 @@ class Countries extends FRResource {
 			FRSetting::readField('capital', NULL, FALSE),
 			FRSetting::readField('code2', NULL, FALSE),
 			
-			FRSetting::readResources('languages', 'languages', array('country' => $this->injectValue('code'))),
-			FRSetting::readResources('mainLanguages', 'languages', array('country' => $this->injectValue('code'), 'percent' => 'gt(5)')),
+			FRSetting::readResources('langs', 'Languages', array('country' => $this->injectValue('code'))),
+			FRSetting::readResources('mainLangs', 'Languages', array('country' => $this->injectValue('code'), 'percent' => 'gt(10)')),
 		));
 		
 		$this->setCreateSettings(array(
