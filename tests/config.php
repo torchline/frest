@@ -10,4 +10,4 @@ $config['authDB'] = NULL;
 
 $config['checkResourceValidity'] = TRUE;
 $config['enableForcedMethod'] = TRUE;
-$config['resourceDirectory'] = 'resources';
+$config['resourceDirectory'] = '../examples/users/resources';

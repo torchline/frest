@@ -5,4 +5,4 @@
 
 require_once('../../FREST/FREST.php');
 
-FREST::automatic()->outputResult();
+FREST\FREST::automatic()->outputResult();

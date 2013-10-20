@@ -5,11 +5,18 @@
 
 require_once('../FREST/FREST.php');
 
+use FREST\FREST;
+use FREST\Enum\OutputFormat;
+use FREST\Enum\Method;
+
+/**
+ * Class UsersTest
+ */
 class UsersTest extends PHPUnit_Framework_TestCase {
 			
 	function testSingularRead() {
-		$frest = FREST::singular(1, 'users', array(), FRMethod::GET);
-		$resultObject = $frest->outputResult(FROutputFormat::OBJECT);
+		$frest = FREST::singular(1, 'users', array(), Method::GET);
+		$resultObject = $frest->outputResult(OutputFormat::OBJECT);
 		
 		$this->assertSuccessfulResult($resultObject);
 		$this->assertValidSingularReadResult($resultObject);
@@ -20,8 +27,8 @@ class UsersTest extends PHPUnit_Framework_TestCase {
 	}
 
 	function testSingularPartialRead() {
-		$frest = FREST::singular(1, 'users', array('fields' => 'name,token'), FRMethod::GET);
-		$resultObject = $frest->outputResult(FROutputFormat::OBJECT);
+		$frest = FREST::singular(1, 'users', array('fields' => 'name,token'), Method::GET);
+		$resultObject = $frest->outputResult(OutputFormat::OBJECT);
 
 		$this->assertSuccessfulResult($resultObject);
 		$this->assertValidSingularReadResult($resultObject);
@@ -38,8 +45,8 @@ class UsersTest extends PHPUnit_Framework_TestCase {
 	}
 
 	function testSingularPartialCompleteRead() {
-		$frest = FREST::singular(1, 'users', array('fields' => 'id,name,token,modified,rank'), FRMethod::GET);
-		$resultObject = $frest->outputResult(FROutputFormat::OBJECT);
+		$frest = FREST::singular(1, 'users', array('fields' => 'id,name,token,modified,rank'), Method::GET);
+		$resultObject = $frest->outputResult(OutputFormat::OBJECT);
 
 		$this->assertSuccessfulResult($resultObject);
 		$this->assertValidSingularReadResult($resultObject);
@@ -50,8 +57,8 @@ class UsersTest extends PHPUnit_Framework_TestCase {
 	}
 
 	function testPluralRead() {
-		$frest = FREST::plural('users', array(), FRMethod::GET);
-		$resultObject = $frest->outputResult(FROutputFormat::OBJECT);
+		$frest = FREST::plural('users', array(), Method::GET);
+		$resultObject = $frest->outputResult(OutputFormat::OBJECT);
 
 		$this->assertSuccessfulResult($resultObject);
 		$this->assertValidPluralReadResult($resultObject);
@@ -66,8 +73,8 @@ class UsersTest extends PHPUnit_Framework_TestCase {
 	}
 
 	function testPluralPartialRead() {
-		$frest = FREST::plural('users', array('fields' => 'rank,name'), FRMethod::GET);
-		$resultObject = $frest->outputResult(FROutputFormat::OBJECT);
+		$frest = FREST::plural('users', array('fields' => 'rank,name'), Method::GET);
+		$resultObject = $frest->outputResult(OutputFormat::OBJECT);
 
 		$this->assertSuccessfulResult($resultObject);
 		$this->assertValidPluralReadResult($resultObject);
@@ -89,8 +96,8 @@ class UsersTest extends PHPUnit_Framework_TestCase {
 	}
 
 	function testPluralPartialCompleteRead() {
-		$frest = FREST::plural('users', array('fields' => 'token,rank,modified,id,name'), FRMethod::GET);
-		$resultObject = $frest->outputResult(FROutputFormat::OBJECT);
+		$frest = FREST::plural('users', array('fields' => 'token,rank,modified,id,name'), Method::GET);
+		$resultObject = $frest->outputResult(OutputFormat::OBJECT);
 
 		$this->assertSuccessfulResult($resultObject);
 		$this->assertValidPluralReadResult($resultObject);
@@ -105,10 +112,9 @@ class UsersTest extends PHPUnit_Framework_TestCase {
 	}
 
 
-
-
-
-
+	/**
+	 * @param stdClass $user
+	 */
 	private function assertCompleteUser($user) {
 		$this->assertEquals(5, count(get_object_vars($user)));
 		
@@ -128,17 +134,26 @@ class UsersTest extends PHPUnit_Framework_TestCase {
 
 		$this->assertEquals(1325379661, $user->modified);
 	}
-	
+
+	/**
+	 * @param stdClass $resultObject
+	 */
 	private function assertSuccessfulResult($resultObject) {
 		$this->assertObjectHasAttribute('status', $resultObject);
 		$this->assertEquals(200, $resultObject->status);
 	}
-	
+
+	/**
+	 * @param stdClass $resultObject
+	 */
 	private function assertValidSingularReadResult($resultObject) {
 		$this->assertObjectHasAttribute('response', $resultObject);
 		$this->assertInstanceOf('stdClass', $resultObject->response);
 	}
 
+	/**
+	 * @param stdClass $resultObject
+	 */
 	private function assertValidPluralReadResult($resultObject) {
 		$this->assertObjectHasAttribute('response', $resultObject);
 		$this->assertInternalType('array', $resultObject->response);

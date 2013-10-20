@@ -1,16 +1,18 @@
-<?php 
+<?php
+
+namespace FREST;
 
 require_once(dirname(__FILE__).'/../SNOAuth2/SNOAuth2_ClientCredentials.php');
-require_once(dirname(__FILE__).'/FRConfig.php');
-require_once(dirname(__FILE__).'/resources/FRResource.php');
-require_once(dirname(__FILE__).'/enums/FRMethod.php');
-require_once(dirname(__FILE__).'/enums/FRTiming.php');
+require_once(dirname(__FILE__) . '/Config.php');
+require_once(dirname(__FILE__) . '/Resource.php');
+require_once(dirname(__FILE__) . '/Enum/Method.php');
+require_once(dirname(__FILE__) . '/Enum/Timing.php');
 
-require_once(dirname(__FILE__) . '/requests/FRSingularReadRequest.php');
-require_once(dirname(__FILE__) . '/requests/FRPluralReadRequest.php');
-require_once(dirname(__FILE__) . '/requests/FRCreateRequest.php');
-require_once(dirname(__FILE__) . '/requests/FRUpdateRequest.php');
-require_once(dirname(__FILE__) . '/requests/FRDeleteRequest.php');
+require_once(dirname(__FILE__) . '/Request/SingularRead.php');
+require_once(dirname(__FILE__) . '/Request/PluralRead.php');
+require_once(dirname(__FILE__) . '/Request/Create.php');
+require_once(dirname(__FILE__) . '/Request/Update.php');
+require_once(dirname(__FILE__) . '/Request/Delete.php');
 
 /** 
  * Class FREST
@@ -19,22 +21,22 @@ class FREST {
 
 	const FORCED_NULL = '__NULL__';
 	
-	/** @var stdClass */
+	/** @var \stdClass */
 	protected $timingObject;
 	
 	/** @var array */
 	protected $startTimes;
 	
-	/** @var FRConfig */
+	/** @var Config */
 	protected $config;
 
-	/** @var FRRequest */
+	/** @var Request\Request */
 	protected $request;
 	
-	/** @var FRResource */
+	/** @var \FREST\Resource */
 	protected $resource;
 	
-	/** @var FRErrorResult */
+	/** @var Result\Error */
 	protected $error;
 	
 	/** @var int */
@@ -47,26 +49,26 @@ class FREST {
 	protected $loadedResources = array();
 	
 	/**
-	 * @param FRConfig $config defaults to FRConfig::fromFile('config.php')
+	 * @param Config $config defaults to Config::fromFile('config.php')
 	 * @param string $resourceName The name of the resource for the request (defaults to base name of request url)
 	 * @param int|string $resourceID The ID of the resource for the request (defaults to base name of request url if it is an int)
 	 * @param array $parameters A list of key-value parameters to pass for the request (defaults to $_GET or $_POST) 
-	 * @param int $requestMethod The method (get, post, put, delete) defined by the FRMethod enum of the request (defaults to REQUEST_METHOD)
-	 * @param string $resourceFunctionName Custom function to be invoked on resource
+	 * @param int $requestMethod The method (get, post, put, delete) (e.g. Enum\Method) of the request (defaults to REQUEST_METHOD)
+	 * @param string $resourceFunctionName Custom Func to be invoked on resource
 	 */
 	public function __construct($config = NULL, $resourceName = NULL, $resourceID = NULL, $parameters = NULL, $requestMethod = NULL, $resourceFunctionName = NULL) {
-		$this->startTimingForLabel(FRTiming::TOTAL, 'frest');
+		$this->startTimingForLabel(Enum\Timing::TOTAL, 'frest');
 		
 		if (!isset($config)) {
-			$config = FRConfig::fromFile($this);
+			$config = Config::fromFile($this);
 		}
 		$this->config = $config;
 		
 		$this->suppressHTTPStatusCodes = $this->config->getSuppressHTTPStatusCodes();
 
-		$this->startTimingForLabel(FRTiming::SETUP, 'frest');
+		$this->startTimingForLabel(Enum\Timing::SETUP, 'frest');
 		
-		// determine resource name, id, and function (if any, taking into account if any of those were passed as parameters)
+		// determine resource name, id, and Func (if any, taking into account if any of those were passed as parameters)
 		if (!isset($resourceName) || !isset($resourceID)) {
 			$url = $_SERVER['REQUEST_URI'];
 			
@@ -90,7 +92,7 @@ class FREST {
 					$resourceID = intval($urlBaseName);
 				}
 				else if (is_numeric($secondBaseName) && intval($secondBaseName) == $secondBaseName) {
-					// assume this int is actually an id and resource precedes it and function follows it
+					// assume this int is actually an id and resource precedes it and Func follows it
 					$resourceName = basename(dirname($urlInfo['dirname']));
 					$resourceID = intval($secondBaseName);
 					$resourceFunctionName = $urlBaseName;
@@ -121,13 +123,13 @@ class FREST {
 				return;
 			}
 
-			$resourceID = FRVariableType::castValue($resourceID, $resourceIDType);
+			$resourceID = Enum\VariableType::castValue($resourceID, $resourceIDType);
 		}
 					
 		// determine request method
 		if (!isset($requestMethod)) {
 			$actualMethodString = $_SERVER['REQUEST_METHOD'];
-			$actualMethod = FRMethod::fromString($actualMethodString);
+			$actualMethod = Enum\Method::fromString($actualMethodString);
 		}
 		else {
 			$actualMethod = $requestMethod;
@@ -135,15 +137,15 @@ class FREST {
 		
 		// check for forced method
 		switch ($actualMethod) {
-			case FRMethod::GET:
-			case FRMethod::POST:
+			case Enum\Method::GET:
+			case Enum\Method::POST:
 				if ($this->config->getEnableForcedMethod() && isset($_REQUEST['method'])) {
 					$forcedMethodString = $_REQUEST['method'];
-					$forcedMethod = FRMethod::fromString($forcedMethodString);
+					$forcedMethod = Enum\Method::fromString($forcedMethodString);
 
 					// if method is valid
 					if ($forcedMethod <= 0) {
-						$this->error = new FRErrorResult(FRErrorResult::InvalidMethod, 400, "Method '{$forcedMethodString}");
+						$this->error = new Result\Error(Result\Error::InvalidMethod, 400, "Method '{$forcedMethodString}");
 						return;
 					}
 				}
@@ -152,27 +154,25 @@ class FREST {
 		
 		if (isset($forcedMethod)) {
 			$this->method = $forcedMethod;
-			$isMethodForced = TRUE;
 		}
 		else {
 			$this->method = $actualMethod;
-			$isMethodForced = FALSE;
 		}
 		
 		// determine parameters to be used for resource
 		if (!isset($parameters)) {
 			switch ($actualMethod) {
-				case FRMethod::GET:
+				case Enum\Method::GET:
 					$parameters = $_GET;
 					break;
-				case FRMethod::POST:
-				case FRMethod::PUT:
-				case FRMethod::DELETE:
+				case Enum\Method::POST:
+				case Enum\Method::PUT:
+				case Enum\Method::DELETE:
 					$parameters = $_POST;
 					break;
 				default:
-					$methodString = FRMethod::getString($actualMethod);
-					$this->error = new FRErrorResult(FRErrorResult::InvalidMethod, 400, "Method '{$methodString}");
+					$methodString = Enum\Method::getString($actualMethod);
+					$this->error = new Result\Error(Result\Error::InvalidMethod, 400, "Method '{$methodString}");
 					return;
 					break;
 			}
@@ -180,26 +180,29 @@ class FREST {
 		
 		if (isset($parameters['suppress_http_status_codes'])) {
 			$value = $parameters['suppress_http_status_codes'];
-			$this->suppressHTTPStatusCodes = FRVariableType::castValue($value, FRVariableType::BOOL);
+			$this->suppressHTTPStatusCodes = Enum\VariableType::castValue($value, Enum\VariableType::BOOL);
 		}
 		
 		switch ($this->method) {
-			case FRMethod::GET: // read
+			case Enum\Method::GET: // read
 				if (isset($resourceID) && $resourceID != self::FORCED_NULL) {
-					$this->request = new FRSingularReadRequest($this, $resourceID, $parameters, $resourceFunctionName);
+					$this->request = new Request\SingularRead($this, $resourceID, $parameters, $resourceFunctionName);
 				}
 				else {
-					$this->request = new FRPluralReadRequest($this, $parameters, $resourceFunctionName);
+					$this->request = new Request\PluralRead($this, $parameters, $resourceFunctionName);
 				}
 				break;
-			case FRMethod::POST: // create
-				$this->request = new FRCreateRequest($this, $resourceID, $parameters, $resourceFunctionName);
+			case Enum\Method::POST: // create
+				$this->request = new Request\Create($this, $resourceID, $parameters, $resourceFunctionName);
 				break;
-			case FRMethod::PUT: // update / create
-				$this->request = new FRUpdateRequest($this, $resourceID, $parameters, $resourceFunctionName);
+			case Enum\Method::PUT: // update / create
+				$this->request = new Request\Update($this, $resourceID, $parameters, $resourceFunctionName);
 				break;
-			case FRMethod::DELETE: // delete
-				$this->request = new FRDeleteRequest($this, $resourceID, $parameters, $resourceFunctionName);
+			case Enum\Method::DELETE: // delete
+				$this->request = new Request\Delete($this, $resourceID, $parameters, $resourceFunctionName);
+				break;
+			
+			default:
 				break;
 		}
 		
@@ -209,8 +212,8 @@ class FREST {
 			return;
 		}
 
-		$this->stopTimingForLabel(FRTiming::SETUP, 'frest');
-		$this->startTimingForLabel(FRTiming::PROCESSING, 'frest');
+		$this->stopTimingForLabel(Enum\Timing::SETUP, 'frest');
+		$this->startTimingForLabel(Enum\Timing::PROCESSING, 'frest');
 		
 		$this->request->setupWithResource($this->resource, $error);	
 		if (isset($error)) {
@@ -218,22 +221,48 @@ class FREST {
 			return;
 		}
 
-		$this->stopTimingForLabel(FRTiming::PROCESSING, 'frest');
-		$this->stopTimingForLabel(FRTiming::TOTAL, 'frest');
+		$this->stopTimingForLabel(Enum\Timing::PROCESSING, 'frest');
+		$this->stopTimingForLabel(Enum\Timing::TOTAL, 'frest');
 	}
-	
+
+	/**
+	 * @return FREST
+	 */
 	public static function automatic() {
 		return new FREST();
 	}
 
+	/**
+	 * @param string $resourceName
+	 * @param string|int $resourceID
+	 * @param array $parameters
+	 * @param int $requestMethod
+	 * @param string $resourceFunctionName
+	 * @return FREST
+	 */
 	public static function all($resourceName = NULL, $resourceID = NULL, $parameters = NULL, $requestMethod = NULL, $resourceFunctionName = NULL) {
 		return new FREST(NULL, $resourceName, $resourceID, $parameters, $requestMethod, $resourceFunctionName);
 	}
-	
+
+	/**
+	 * @param string|int $id
+	 * @param string $resourceName
+	 * @param array $parameters
+	 * @param int $requestMethod
+	 * @param string $resourceFunctionName
+	 * @return FREST
+	 */
 	public static function singular($id, $resourceName = NULL, $parameters = NULL, $requestMethod = NULL, $resourceFunctionName = NULL) {
 		return new FREST(NULL, $resourceName, $id, $parameters, $requestMethod, $resourceFunctionName);
 	}
 
+	/**
+	 * @param string $resourceName
+	 * @param array $parameters
+	 * @param int $requestMethod
+	 * @param string $resourceFunctionName
+	 * @return FREST
+	 */
 	public static function plural($resourceName = NULL, $parameters = NULL, $requestMethod = NULL, $resourceFunctionName = NULL) {
 		return new FREST(NULL, $resourceName, self::FORCED_NULL, $parameters, $requestMethod, $resourceFunctionName);
 	}
@@ -248,7 +277,7 @@ class FREST {
 	 * 
 	 * @return mixed
 	 */
-	public function outputResult($format = FROutputFormat::JSON, $inline = FALSE) {
+	public function outputResult($format = Enum\OutputFormat::JSON, $inline = FALSE) {
 		if (isset($this->error)) {
 			$output = $this->error->output($this, $format, $inline);
 		}
@@ -274,7 +303,7 @@ class FREST {
 
 	/**
 	 * @param string $resourceName
-	 * @param FRErrorResult $error
+	 * @param Result\Error $error
 	 * @return int
 	 */
 	public function resourceIDTypeFromResource($resourceName, &$error) {
@@ -284,7 +313,7 @@ class FREST {
 			return -1;
 		}
 		
-		/** @var FRFieldSetting $fieldSetting */
+		/** @var Setting\Field $fieldSetting */
 		$resource->getIDField($fieldSetting);
 		$resourceIDType = $fieldSetting->getVariableType();
 		
@@ -293,10 +322,10 @@ class FREST {
 	
 	/**
 	 * @param string $resourceName
-	 * @param FRRequest $request
-	 * @param FRErrorResult $error
+	 * @param Request\Request $request
+	 * @param Result\Error $error
 	 *
-	 * @return FRResource
+	 * @return \FREST\Resource
 	 */
 	public function loadResourceWithName($resourceName, $request = NULL, &$error = NULL) {
 		$resourceClassName = ucfirst($resourceName);
@@ -304,45 +333,54 @@ class FREST {
 
 		// verify resource existence
 		if (!file_exists($resourcePath)) {
-			$error = new FRErrorResult(FRErrorResult::Config, 500, "File for resource '{$resourceName}' not found at '{$resourcePath}'");
+			$error = new Result\Error(Result\Error::Config, 500, "File for resource '{$resourceName}' not found at '{$resourcePath}'");
 			return NULL;
 		}
 
 		// load the class, check if failed
+		/** @noinspection PhpIncludeInspection */
+		require_once $resourcePath;
+		
+		/*
 		if (!@include_once($resourcePath)) {
-			$error = new FRErrorResult(FRErrorResult::FailedLoadingResource, 500, "Failure in '{$resourcePath}'");
+			$error = new Result\Error(Result\Error::FailedLoadingResource, 500, "Failure in '{$resourcePath}'");
 			return NULL;
 		}
+		*/
 		
 		if (!class_exists($resourceClassName, FALSE)) {
-			$error = new FRErrorResult(FRErrorResult::Config, 500, "Class '{$resourceClassName}' not found in file '{$resourcePath}'");
+			$error = new Result\Error(Result\Error::Config, 500, "Class '{$resourceClassName}' not found in file '{$resourcePath}'");
 			return NULL;
 		}
-		if (!is_subclass_of($resourceClassName, 'FRResource')) {
-			$error = new FRErrorResult(FRErrorResult::Config, 500, "Class '{$resourceClassName}' is not a subclass of FRResource");
+		if (!is_subclass_of($resourceClassName, '\FREST\Resource')) {
+			$error = new Result\Error(Result\Error::Config, 500, "Class '{$resourceClassName}' is not a subclass of \\FREST\\Resource");
 			return NULL;
 		}
 
 		if (isset($this->loadedResources[$resourceClassName])) {
-			/** @var FRResource $resource */
+			/** @var \FREST\Resource $resource */
 			$resource = $this->loadedResources[$resourceClassName];
 		}
 		else {
-			/** @var FRResource $resource */
+			/** @var \FREST\Resource $resource */
 			$resource = new $resourceClassName($this);
 			$this->loadedResources[$resourceClassName] = $resource;
 		}
 
 		if (isset($request) && method_exists($resource, 'isAuthRequiredForRequest')) {
+			$scopes = NULL; // TODO: get scopes
+			
 			$isAuthRequired = $resource->isAuthRequiredForRequest($request, $scopes);
 
 			if ($isAuthRequired) {
-				$scopeString = '';
 				if (isset($scopes)) {
 					$scopeString = implode(' ', $scopes);
 				}
-
-				$snoAuth = new SNOAuth2_ClientCredentials(new SNOAuth2Config($this->config->getAuthPDO()));
+				else {
+					$scopeString = '';
+				}
+				
+				$snoAuth = new \SNOAuth2_ClientCredentials(new \SNOAuth2Config($this->config->getAuthPDO()));
 				$snoAuth->verifyResourceAccess($scopeString);
 			}
 		}
@@ -377,7 +415,7 @@ class FREST {
 	 */
 	public function stopTimingForLabel($label, $instance) {
 		if (!isset($this->timingObject)) {
-			$this->timingObject = new stdClass;
+			$this->timingObject = new \stdClass;
 		}
 		
 		if (!isset($this->startTimes[$label]['instances'][$instance])) {
@@ -422,21 +460,21 @@ class FREST {
 	}
 	
 	/**
-	 * @return \FRConfig
+	 * @return Config
 	 */
 	public function getConfig() {
 		return $this->config;
 	}
 
 	/**
-	 * @return \FRRequest
+	 * @return Request\Request
 	 */
 	public function getRequest() {
 		return $this->request;
 	}
 
 	/**
-	 * @return \FRResource
+	 * @return Resource
 	 */
 	public function getResource() {
 		return $this->resource;

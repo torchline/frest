@@ -9,4 +9,4 @@ $parts = explode('?', $_SERVER['REQUEST_URI']);
 $pathParts = explode('/', $parts[0]);
 $resource = $pathParts[3];
 
-FREST::all($resource)->outputResult();
+FREST\FREST::all($resource)->outputResult();
