@@ -7,8 +7,8 @@ $config['db']['username'] = 'root';
 $config['db']['password'] = 'root';
 $config['authDB'] = NULL;
 
-$config['suppressHTTPStatusCodes'] = FALSE;
 $config['showDiagnostics'] = TRUE;
+$config['suppressHTTPStatusCodes'] = FALSE;
 
 $config['checkResourceValidity'] = TRUE;
 $config['enableForcedMethod'] = FALSE;

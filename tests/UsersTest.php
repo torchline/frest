@@ -4,6 +4,7 @@
 */
 
 require_once('../FREST/FREST.php');
+require_once('../vendor/autoload.php');
 
 use FREST\FREST;
 use FREST\Enum\OutputFormat;

@@ -626,37 +626,39 @@ class PluralRead extends Read {
 		
 		return $functionUsed;
 	}
-	
+
 
 	/**
-	 * @param Result\Error $error
-	 *
+	 * @param $parameter
+	 * @param $value
+	 * @param $error
 	 * @return bool
 	 */
-	protected function checkForInvalidURLParameters(&$error = NULL) {		
-		$conditionSettings = $this->resource->getConditionSettings();
+	protected function isValidURLParameter($parameter, $value, &$error) {
+		/** @noinspection PhpUndefinedClassInspection */
+		$isValid = parent::isValidURLParameter($parameter, $value, $error);
+		if (isset($error)) {
+			return $isValid;
+		}
 		
-		foreach($this->parameters as $parameter=>$value) {
-			if (is_array($value)) {
-				$error = new Result\Error(Result\Error::InvalidUsage, 400, "Parameter values (specifically '{$parameter}') are not allowed to be arrays");
-				return FALSE;
-			}
-
-			$isValidConditionAlias = isset($conditionSettings[$parameter]);
-			$isValidMiscParam = isset($this->miscParameters[$parameter]);
-
-			if ($isValidConditionAlias) {
-				if ($isValidMiscParam) {
-					$error = new Result\Error(Result\Error::Config, 500, "The alias '{$parameter}' is reserved for internal use and must not be used");
+		if (!$isValid) { // if not already determined to be valid
+			$conditionSettings = $this->resource->getConditionSettings();
+			
+			if (isset($conditionSettings[$parameter])) {
+				/** @var Setting\Condition $conditionSetting */
+				$conditionSetting = $conditionSettings[$parameter];
+				
+				$fieldSetting = $this->resource->getFieldSettingForAlias($conditionSetting->getAlias());
+				if (!isset($fieldSetting)) {
+					$resourceName = get_class($this->resource);
+					$error = new Result\Error(Result\Error::Config, 500, "No field setting found for condition '{$parameter}' in resource {$resourceName}");
 					return FALSE;
 				}
-			}
-			else if (!$isValidMiscParam) {
-				$error = new Result\Error(Result\Error::InvalidField, 400, "Invalid parameter used in query: '{$parameter}'");
-				return FALSE;
+
+				$isValid = TRUE;
 			}
 		}
-
-		return TRUE;
+		
+		return $isValid;
 	}
 }

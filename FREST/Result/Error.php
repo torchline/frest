@@ -37,6 +37,9 @@ class Error extends Result {
 	const PartialSyntaxNotSupported = 1422;
 	const NothingToDo = 1423;
 	const FailedLoadingResource = 1424;
+	const WildcardsNotAllowed = 1425;
+	const PartialSyntaxNotAllowed = 1426;
+	const FieldsParameterNotAllowed = 1427;
 	
 	private static $descriptions = array(
 		self::InvalidField => 'There is an invalid field specified in the query',
@@ -63,6 +66,9 @@ class Error extends Result {
 		self::PartialSyntaxNotSupported => 'Partial syntax was attempted on a field that does not support it',
 		self::NothingToDo => 'There is nothing to do',
 		self::FailedLoadingResource => 'There is an error in the resource file',
+		self::WildcardsNotAllowed => 'Wildcard are not allowed on this resource',
+		self::PartialSyntaxNotAllowed => 'Partial syntax is not allowed on this resource',
+		self::FieldsParameterNotAllowed => 'The "fields" parameter is not allowed on this resource',
 	);
 
 	/** @var int */
@@ -80,7 +86,7 @@ class Error extends Result {
 	 * @param string $detailedDescription
 	 * @param string|NULL $userMessage
 	 */
-	function __construct($code, $httpStatusCode, $detailedDescription, $userMessage = NULL) {
+	function __construct($code, $httpStatusCode, $detailedDescription = NULL, $userMessage = NULL) { // TODO: remove httpStatusCode and generate based on error code
 		$this->code = $code;
 		$this->httpStatusCode = $httpStatusCode;
 		$this->detailedDescription = $detailedDescription;
@@ -94,9 +100,14 @@ class Error extends Result {
 		$outputObject = new \stdClass();
 		$outputObject->code = $this->code;
 		$outputObject->status = $this->httpStatusCode;
-		$outputObject->developerMessage = $this->getDescription() . '. ' . $this->detailedDescription;
+		
+		$developerMessage = $this->getDescription();
+		if (isset($this->detailedDescription)) {
+			$developerMessage .= ". {$this->detailedDescription}.";
+		}
+		$outputObject->developerMessage = $developerMessage;
 
-		if (isset($this->userMessage)) {
+		if (isset($this->userMessage)) { // TODO: define local default user messages
 			$outputObject->userMessage = $this->userMessage;
 		}
 

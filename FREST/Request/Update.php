@@ -287,41 +287,39 @@ class Update extends Request {
 
 		return $assignmentStringList;
 	}
-	
-	
+
+
 	/**
-	 * @param Result\Error $error
-	 *
+	 * @param $parameter
+	 * @param $value
+	 * @param $error
 	 * @return bool
 	 */
-	protected function checkForInvalidURLParameters(&$error = NULL) {
-		$updateSettings = $this->resource->getUpdateSettings();
+	protected function isValidURLParameter($parameter, $value, &$error) {
+		/** @noinspection PhpUndefinedClassInspection */
+		$isValid = parent::isValidURLParameter($parameter, $value, $error);
+		if (isset($error)) {
+			return $isValid;
+		}
 
-		/** @var Setting\Field $idFieldSetting */
-		$idFieldName = $this->resource->getIDField();
-		$idAlias = $this->resource->getAliasForField($idFieldName);
-		
-		foreach($this->parameters as $parameter=>$value) {
-			if (is_array($value)) {
-				$error = new Result\Error(Result\Error::InvalidUsage, 400, "Parameter values (specifically '{$parameter}') are not allowed to be arrays");
-				return FALSE;
-			}
+		if (!$isValid) { // if not already determined to be valid
+			$updateSettings = $this->resource->getUpdateSettings();
 
-			$isValidAlias = $parameter != $idAlias && isset($updateSettings[$parameter]);
-			$isValidMiscParam = isset($this->miscParameters[$parameter]);
+			if (isset($updateSettings[$parameter])) {
+				/** @var Setting\Update $updateSetting */
+				$updateSetting = $updateSettings[$parameter];
 
-			if ($isValidAlias) {
-				if ($isValidMiscParam) {
-					$error = new Result\Error(Result\Error::Config, 500, "The alias '{$parameter}' is reserved for internal use and must not be used");
+				$fieldSetting = $this->resource->getFieldSettingForAlias($updateSetting->getAlias());
+				if (!isset($fieldSetting)) {
+					$resourceName = get_class($this->resource);
+					$error = new Result\Error(Result\Error::Config, 500, "No field setting found for condition '{$parameter}' in resource {$resourceName}");
 					return FALSE;
 				}
-			}
-			else if (!$isValidMiscParam) {
-				$error = new Result\Error(Result\Error::InvalidField, 400, "Invalid parameter used in query: '{$parameter}'");
-				return FALSE;
+
+				$isValid = TRUE;
 			}
 		}
 
-		return TRUE;
+		return $isValid;
 	}
 }

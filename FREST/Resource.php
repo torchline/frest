@@ -16,21 +16,7 @@ require_once(dirname(__FILE__) . '/Result/ResourceFunc.php');
  * @package FREST\Resource
  */
 abstract class Resource {
-		
-	/**
-	 * The limit to use on SQL queries when no limit is specified
-	 * 
-	 * @var int (optional)
-	 */
-	private $defaultLimit = 10;
-
-	/**
-	 * The maximum limit allowed in the SQL query
-	 * 
-	 * @var int (optional)
-	 */
-	private $maxLimit = 25;
-
+	
 	/**
 	 * Whether or not to allow Request searching for a resource of a specific ID (e.g. /api/users/1)
 	 *
@@ -44,6 +30,41 @@ abstract class Resource {
 	 * @var int (optional)
 	 */
 	private $allowsPluralReads = TRUE;
+
+	/**
+	 * Whether to allow the "*" fields parameters in read requests (retrieves all available fields from Resource)
+	 *
+	 * @var bool (default: FALSE)
+	 */
+	protected $allowWildcards;
+
+	/**
+	 * Whether to allow partial syntax in read requests (e.g. /api/users?fields=id,name,company(name,size) )
+	 *
+	 * @var bool (default: TRUE)
+	 */
+	protected $allowPartialSyntax;
+
+	/**
+	 * Whether to allow the 'fields' url parameter in read requests (e.g. /api/users?fields=id,name )
+	 *
+	 * @var bool (default: TRUE)
+	 */
+	protected $allowFieldsParameter;
+
+	/**
+	 * The limit to use on SQL queries when no limit is specified
+	 *
+	 * @var int (optional)
+	 */
+	private $defaultLimit;
+
+	/**
+	 * The maximum limit allowed in the SQL query
+	 *
+	 * @var int (optional)
+	 */
+	private $maxLimit;
 
 	/**
 	 * An associative array with keys indicating the name of the SQL table associated
@@ -509,6 +530,54 @@ abstract class Resource {
 		return $this->allowsSingularReads;
 	}
 
+	/**
+	 * @param boolean $allowFieldsParameter
+	 */
+	public function setAllowFieldsParameter($allowFieldsParameter)
+	{
+		$this->allowFieldsParameter = $allowFieldsParameter;
+	}
+
+	/**
+	 * @return boolean
+	 */
+	public function getAllowFieldsParameter()
+	{
+		return $this->allowFieldsParameter;
+	}
+
+	/**
+	 * @param boolean $allowPartialSyntax
+	 */
+	public function setAllowPartialSyntax($allowPartialSyntax)
+	{
+		$this->allowPartialSyntax = $allowPartialSyntax;
+	}
+
+	/**
+	 * @return boolean
+	 */
+	public function getAllowPartialSyntax()
+	{
+		return $this->allowPartialSyntax;
+	}
+
+	/**
+	 * @param boolean $allowWildcards
+	 */
+	public function setAllowWildcards($allowWildcards)
+	{
+		$this->allowWildcards = $allowWildcards;
+	}
+
+	/**
+	 * @return boolean
+	 */
+	public function getAllowWildcards()
+	{
+		return $this->allowWildcards;
+	}
+
 	
 	/**
 	 * @return array
@@ -650,21 +719,21 @@ abstract class Resource {
 	/**
 	 * @param int $defaultLimit
 	 */
-	protected function setDefaultLimit($defaultLimit) {
+	public function setDefaultLimit($defaultLimit) {
 		$this->defaultLimit = $defaultLimit;
 	}
 
 	/**
 	 * @param int $maxLimit
 	 */
-	protected function setMaxLimit($maxLimit) {
+	public function setMaxLimit($maxLimit) {
 		$this->maxLimit = $maxLimit;
 	}
 
 	/**
 	 * @param array $tableSettings
 	 */
-	protected function setTableSettings($tableSettings) {
+	public function setTableSettings($tableSettings) {
 		$keyedSettings = array();
 
 		/** @var Setting\Table $setting */

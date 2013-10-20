@@ -61,7 +61,6 @@ abstract class Read extends Request\Request {
 	 * @param string $parentAlias
 	 */
 	public function __construct($frest, $resourceID = NULL, $parameters, $resourceFunctionName = NULL, $parentAlias = NULL) {
-		$this->miscParameters['fields'] = TRUE;
 		$this->parentAlias = $parentAlias;
 
 		/** @noinspection PhpUndefinedClassInspection */
@@ -720,6 +719,7 @@ abstract class Read extends Request\Request {
 					$this->frest->stopTimingForLabel(Enum\Timing::POST_PROCESSING, $timerInstance);
 					
 					$request = new PluralRead($this->frest, $requestParameters, NULL, $readSetting->getAlias());
+					$request->setWasInternallyLoaded(TRUE);
 					$request->setupWithResource($loadedResource, $error);
 					if (isset($error)) {
 						return;
@@ -1195,6 +1195,41 @@ abstract class Read extends Request\Request {
 		$parameterList[] = trim(substr($paramterListString, $paramStartIndex, $i - $paramStartIndex));
 		
 		return $parameterList;
+	}
+
+	/**
+	 * @param $parameter
+	 * @param $value
+	 * @param $error
+	 * @return bool
+	 */
+	protected function isValidURLParameter($parameter, $value, &$error) {
+		/** @noinspection PhpUndefinedClassInspection */
+		$isValid = parent::isValidURLParameter($parameter, $value, $error);
+		if (isset($error)) {
+			return $isValid;
+		}
+		
+		// if not already determined valid
+		if (!$isValid) {
+			if ($parameter == 'fields') {
+				if (!$this->getWasInternallyLoaded()) {
+					if (!$this->resource->getAllowFieldsParameter()) {
+						$error = new Result\Error(Result\Error::FieldsParameterNotAllowed, 400);
+						return FALSE;
+					}
+
+					if (!$this->resource->getAllowPartialSyntax() && (strpos($value, '(') !== FALSE || strpos($value, ')') !== FALSE)) {
+						$error = new Result\Error(Result\Error::PartialSyntaxNotAllowed, 400);
+						return FALSE;
+					}
+				}
+
+				$isValid = TRUE;
+			}
+		}
+		
+		return $isValid;
 	}
 	
 	/**

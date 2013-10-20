@@ -19,7 +19,7 @@ require_once(dirname(__FILE__) . '/../Func/Resource.php');
  * @package FREST\Request
  */
 abstract class Request {
-
+	
 	/** @var FREST\FREST */
 	protected $frest;
 	
@@ -43,16 +43,9 @@ abstract class Request {
 	
 	/** @var array */
 	protected $resourceFunctionParameters;
-	
-	
-	public $miscParameters = array(
-		'method' => TRUE,
-		'callback' => TRUE,
-		'_' => TRUE,
-		'suppress_http_status_codes' => TRUE,
-		'access_token' => TRUE
-	);
 
+	/** @var bool */
+	protected $wasInternallyLoaded;
 
 
 	/**
@@ -127,14 +120,12 @@ abstract class Request {
 	 */
 	protected function checkForInvalidURLParameters(&$error = NULL) {
 		foreach($this->parameters as $parameter=>$value) {
-			if (is_array($value)) {
-				$error = new Result\Error(Result\Error::InvalidUsage, 400, "Parameter values (specifically '{$parameter}') are not allowed to be arrays");
+			$isValid = $this->isValidURLParameter($parameter, $value, $error);
+			if (isset($error)) {
 				return FALSE;
 			}
 
-			$isValidMiscParam = isset($this->miscParameters[$parameter]);
-
-			if (!$isValidMiscParam) {
+			if (!$isValid) {
 				$error = new Result\Error(Result\Error::InvalidField, 400, "Invalid parameter used in query: '{$parameter}'");
 				return FALSE;
 			}
@@ -240,8 +231,52 @@ abstract class Request {
 		$functionName = $this->resourceFunctionName;
 		return $this->resource->$functionName($this->resourceFunctionParameters);
 	}
-	
-	
+
+	/**
+	 * @param $parameter
+	 * @param $value
+	 * @param $error
+	 * @return bool
+	 */
+	protected function isValidURLParameter($parameter, $value, &$error) {
+		$isValid = FALSE;
+		
+		if (is_array($value)) {
+			$error = new Result\Error(Result\Error::InvalidUsage, 400, "Parameter values (specifically '{$parameter}') are not allowed to be arrays");
+		}
+		else {
+			switch($parameter) {
+				case 'method':
+					$method = Enum\Method::fromString($value);
+					if ($method < 0) {
+						$error = new Result\Error(Result\Error::InvalidMethod, 400, "Invalid method: {$value}");
+						return FALSE;
+					}
+					$isValid = TRUE;
+					break;
+				case 'callback':
+					$isValid = TRUE;
+					break;
+				case '_':
+					$isValid = TRUE;
+					break;
+				case 'suppress_http_status_codes':
+					$boolValue = Enum\VariableType::castValue($value, Enum\VariableType::BOOL);
+					if (!isset($boolValue)) {
+						$typeString = Enum\VariableType::getString(Enum\VariableType::BOOL);
+						$error = new Result\Error(Result\Error::InvalidType, 400, "Expecting {$parameter} to be of type {$typeString}");
+						return FALSE;
+					}
+					$isValid = TRUE;
+					break;
+				case 'access_token':
+					$isValid = TRUE;
+					break;
+			}
+		}
+				
+		return $isValid;
+	}
 	
 	
 	// ------------------------------------------
@@ -263,9 +298,20 @@ abstract class Request {
 	}
 
 	/**
-	 * @return array
+	 * @param boolean $wasInternallyLoaded
 	 */
-	public function getMiscParameters() {
-		return $this->miscParameters;
+	public function setWasInternallyLoaded($wasInternallyLoaded)
+	{
+		$this->wasInternallyLoaded = $wasInternallyLoaded;
 	}
+
+	/**
+	 * @return boolean
+	 */
+	public function getWasInternallyLoaded()
+	{
+		return $this->wasInternallyLoaded;
+	}
+	
+	
 }

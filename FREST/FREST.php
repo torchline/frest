@@ -364,6 +364,12 @@ class FREST {
 		else {
 			/** @var \FREST\Resource $resource */
 			$resource = new $resourceClassName($this);
+			$resource->setDefaultLimit($this->config->getDefaultLimit());
+			$resource->setMaxLimit($this->config->getMaxLimit());
+			$resource->setAllowWildcards($this->config->getAllowWildcards());
+			$resource->setAllowFieldsParameter($this->config->getAllowFieldsParameter());
+			$resource->setAllowPartialSyntax($this->config->getAllowPartialSyntax());
+			
 			$this->loadedResources[$resourceClassName] = $resource;
 		}
 

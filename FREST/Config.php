@@ -14,6 +14,27 @@ class Config {
 	 * @var bool (default: FALSE)
 	 */
 	protected $suppressHTTPStatusCodes = FALSE;
+
+	/**
+	 * Whether to allow the "*" fields parameters in read requests (retrieves all available fields from Resource)
+	 *
+	 * @var bool (default: FALSE)
+	 */
+	protected $allowWildcards = FALSE;
+
+	/**
+	 * Whether to allow partial syntax in read requests (e.g. /api/users?fields=id,name,company(name,size) )
+	 *
+	 * @var bool (default: TRUE)
+	 */
+	protected $allowPartialSyntax = TRUE;
+
+	/**
+	 * Whether to allow the 'fields' url parameter in read requests (e.g. /api/users?fields=id,name )
+	 *
+	 * @var bool (default: TRUE)
+	 */
+	protected $allowFieldsParameter = TRUE;
 	
 	/**
 	 * Outputs timing and memory data alongside the response
@@ -44,6 +65,20 @@ class Config {
 	 * @var bool (default: TRUE)
 	 */
 	protected $enableForcedMethod = TRUE;
+	
+	/**
+	 * The default LIMIT to apply to plural resource requests (can be overriden on a per-resource basis using the 'setDefaultLimit' method)
+	 * 
+	 * @var int (default: 10)
+	 */
+	protected $defaultLimit = 10;
+
+	/**
+	 * The max LIMIT available on plural resource requests (can be overriden on a per-resource basis using the 'setMaxLimit' method)
+	 *
+	 * @var int (default: 25)
+	 */
+	protected $maxLimit = 25;
 
 	/**
 	 * The directory in which all custom Resource files are held.
@@ -89,7 +124,7 @@ class Config {
 	 * @param \PDO $pdo
 	 */
 	public function __construct($pdo = NULL) {
-		$this->resourceDirectory = 'Resource';
+		$this->resourceDirectory = 'resources';
 		$this->setPDO($pdo);
 	}
 	
@@ -201,6 +236,38 @@ class Config {
 	}
 
 	/**
+	 * @param int $defaultLimit
+	 */
+	public function setDefaultLimit($defaultLimit)
+	{
+		$this->defaultLimit = $defaultLimit;
+	}
+
+	/**
+	 * @return int
+	 */
+	public function getDefaultLimit()
+	{
+		return $this->defaultLimit;
+	}
+
+	/**
+	 * @param int $maxLimit
+	 */
+	public function setMaxLimit($maxLimit)
+	{
+		$this->maxLimit = $maxLimit;
+	}
+
+	/**
+	 * @return int
+	 */
+	public function getMaxLimit()
+	{
+		return $this->maxLimit;
+	}
+	
+	/**
 	 * @return boolean
 	 */
 	public function getSuppressHTTPStatusCodes() {
@@ -214,6 +281,56 @@ class Config {
 	{
 		$this->suppressHTTPStatusCodes = $suppressHTTPStatusCodes;
 	}
+
+	/**
+	 * @param boolean $allowFieldsParameter
+	 */
+	public function setAllowFieldsParameter($allowFieldsParameter)
+	{
+		$this->allowFieldsParameter = $allowFieldsParameter;
+	}
+
+	/**
+	 * @return boolean
+	 */
+	public function getAllowFieldsParameter()
+	{
+		return $this->allowFieldsParameter;
+	}
+
+	/**
+	 * @param boolean $allowPartialSyntax
+	 */
+	public function setAllowPartialSyntax($allowPartialSyntax)
+	{
+		$this->allowPartialSyntax = $allowPartialSyntax;
+	}
+
+	/**
+	 * @return boolean
+	 */
+	public function getAllowPartialSyntax()
+	{
+		return $this->allowPartialSyntax;
+	}
+
+	/**
+	 * @param boolean $allowWildcards
+	 */
+	public function setAllowWildcards($allowWildcards)
+	{
+		$this->allowWildcards = $allowWildcards;
+	}
+
+	/**
+	 * @return boolean
+	 */
+	public function getAllowWildcards()
+	{
+		return $this->allowWildcards;
+	}
+	
+	
 
 	/**
 	 * @return boolean
@@ -273,15 +390,27 @@ class Config {
 	 */
 	public function setConfigArray($configArray) {
 		$this->configArray = $configArray;
-
-		if (isset($configArray['suppressHTTPStatusCodes'])) {
-			$this->setSuppressHTTPStatusCodes($configArray['suppressHTTPStatusCodes']);
-		}
-
+		
 		if (isset($configArray['showDiagnostics'])) {
 			$this->setShowDiagnostics($configArray['showDiagnostics']);
 		}
 
+		if (isset($configArray['allowWildcards'])) {
+			$this->setAllowWildcards($configArray['allowWildcards']);
+		}
+
+		if (isset($configArray['allowFieldsParameter'])) {
+			$this->setAllowFieldsParameter($configArray['allowFieldsParameter']);
+		}
+		
+		if (isset($configArray['allowPartialSyntax'])) {
+			$this->setAllowPartialSyntax($configArray['allowPartialSyntax']);
+		}
+
+		if (isset($configArray['suppressHTTPStatusCodes'])) {
+			$this->setSuppressHTTPStatusCodes($configArray['suppressHTTPStatusCodes']);
+		}
+		
 		if (isset($configArray['checkResourceValidity'])) {
 			$this->setCheckResourceValidity($configArray['checkResourceValidity']);
 		}
@@ -290,6 +419,14 @@ class Config {
 			$this->setEnableForcedMethod($configArray['enableForcedMethod']);
 		}
 
+		if (isset($configArray['defaultLimit'])) {
+			$this->setDefaultLimit($configArray['defaultLimit']);
+		}
+
+		if (isset($configArray['maxLimit'])) {
+			$this->setMaxLimit($configArray['maxLimit']);
+		}
+		
 		if (isset($configArray['resourceDirectory'])) {
 			$this->setResourceDirectory($configArray['resourceDirectory']);
 		}
