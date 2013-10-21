@@ -1,9 +1,6 @@
 {
-    "name": "bramamine/frest-php",
+    "name": "torchline/frest",
     "require": {
         "php": ">=5.3.0"
-    },
-    "require-dev": {
-        "phpunit/phpunit": "3.7.*"
     }
 }

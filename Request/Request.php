@@ -254,6 +254,8 @@ abstract class Request {
 		else {
 			$isValid = isset($this->miscParameters[$parameter]);
 		}
+		
+		
 				
 		return $isValid;
 	}
