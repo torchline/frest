@@ -61,6 +61,8 @@ abstract class Read extends Request\Request {
 	 * @param string $parentAlias
 	 */
 	public function __construct($frest, $resourceID = NULL, $parameters, $resourceFunctionName = NULL, $parentAlias = NULL) {
+		$this->miscParameters['fields'] = TRUE;
+		
 		$this->parentAlias = $parentAlias;
 
 		/** @noinspection PhpUndefinedClassInspection */

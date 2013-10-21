@@ -47,6 +47,8 @@ abstract class Request {
 	/** @var bool */
 	protected $wasInternallyLoaded;
 
+	/** @var array */
+	protected $miscParameters;
 
 	/**
 	 * @param FREST\FREST $frest
@@ -59,6 +61,12 @@ abstract class Request {
 		$this->resourceID = $resourceID;
 		$this->parameters = $parameters;
 		$this->resourceFunctionName = $resourceFunctionName;
+
+		$this->miscParameters['method'] = TRUE;
+		$this->miscParameters['callback'] = TRUE;
+		$this->miscParameters['_'] = TRUE;
+		$this->miscParameters['suppress_http_status_codes'] = TRUE;
+		$this->miscParameters['access_token'] = TRUE;
 	}
 
 
@@ -238,41 +246,13 @@ abstract class Request {
 	 * @param $error
 	 * @return bool
 	 */
-	protected function isValidURLParameter($parameter, $value, &$error) {
-		$isValid = FALSE;
-		
+	protected function isValidURLParameter($parameter, $value, &$error) {		
 		if (is_array($value)) {
 			$error = new Result\Error(Result\Error::InvalidUsage, 400, "Parameter values (specifically '{$parameter}') are not allowed to be arrays");
+			return FALSE;
 		}
 		else {
-			switch($parameter) {
-				case 'method':
-					$method = Enum\Method::fromString($value);
-					if ($method < 0) {
-						$error = new Result\Error(Result\Error::InvalidMethod, 400, "Invalid method: {$value}");
-						return FALSE;
-					}
-					$isValid = TRUE;
-					break;
-				case 'callback':
-					$isValid = TRUE;
-					break;
-				case '_':
-					$isValid = TRUE;
-					break;
-				case 'suppress_http_status_codes':
-					$boolValue = Enum\VariableType::castValue($value, Enum\VariableType::BOOL);
-					if (!isset($boolValue)) {
-						$typeString = Enum\VariableType::getString(Enum\VariableType::BOOL);
-						$error = new Result\Error(Result\Error::InvalidType, 400, "Expecting {$parameter} to be of type {$typeString}");
-						return FALSE;
-					}
-					$isValid = TRUE;
-					break;
-				case 'access_token':
-					$isValid = TRUE;
-					break;
-			}
+			$isValid = isset($this->miscParameters[$parameter]);
 		}
 				
 		return $isValid;
