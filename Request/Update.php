@@ -30,38 +30,27 @@ class Update extends Request {
 
 	/**
 	 * @param FREST\Resource $resource
-	 * @param Result\Error $error
+	 * @throws FREST\Exception
 	 */
-	public function setupWithResource($resource, &$error = NULL) {
-		parent::setupWithResource($resource, $error);
-		if (isset($error)) {
-			return;
-		}
+	public function setupWithResource($resource) {
+		parent::setupWithResource($resource);
 
 		if (!isset($this->resourceID)) {
-			$error = new Result\Error(Result\Error::MissingResourceID, 400, '');
-			return;
+			throw new FREST\Exception(FREST\Exception::MissingResourceID);
 		}
 
 		if (!isset($this->parameters) || count($this->parameters) == 0) {
-			$error = new Result\Error(Result\Error::NothingToDo, 400, "No update parameters specified");
-			return;
+			throw new FREST\Exception(FREST\Exception::NothingToDo, "No update parameters specified");
 		}
 		
-		$this->updateSpecs = $this->generateUpdateSpecs($this->resource, $error);
-		if (isset($error)) {
-			return;
-		}
-
-		$this->tableUpdateSpecs = $this->generateTableUpdateSpecs($this->resource, $this->updateSpecs, $error);
-		if (isset($error)) {
-			return;
-		}
+		$this->updateSpecs = $this->generateUpdateSpecs($this->resource);
+		$this->tableUpdateSpecs = $this->generateTableUpdateSpecs($this->resource, $this->updateSpecs);
 	}
 
 	/**
 	 * @param bool $forceRegen
-	 * @return Result\Update|Result\Error
+	 * @return Result\Update
+	 * @throws FREST\Exception
 	 */
 	public function generateResult($forceRegen = FALSE) {
 		$this->frest->startTimingForLabel(Enum\Timing::PROCESSING, 'update');
@@ -95,11 +84,7 @@ class Update extends Request {
 
 			$idFieldName = $this->resource->getIDFieldForTable($table);
 
-			$assignmentStringList = $this->generateAssignmentStringList($queryParameterSpecs, $error);
-			if (isset($error)) {
-				return $error;
-			}
-
+			$assignmentStringList = $this->generateAssignmentStringList($queryParameterSpecs);
 			$assignmentString = implode(',', $assignmentStringList);
 			
 			$this->frest->stopTimingForLabel(Enum\Timing::PROCESSING, 'update');
@@ -129,8 +114,7 @@ class Update extends Request {
 					$pdo->rollBack();
 				}
 
-				$error = new Result\Error(Result\Error::SQLError, 500, 'Error updating database. '.implode(' ', $updateStmt->errorInfo()));
-				return $error;
+				throw new FREST\Exception(FREST\Exception::SQLError, 'Error updating database');
 			}
 
 			$this->frest->stopTimingForLabel(Enum\Timing::SQL, 'update');
@@ -155,10 +139,10 @@ class Update extends Request {
 
 	/**
 	 * @param FREST\Resource $resource
-	 * @param Result\Error $error
 	 * @return array
+	 * @throws FREST\Exception
 	 */
-	private function generateUpdateSpecs($resource, &$error = NULL) {
+	private function generateUpdateSpecs($resource) {
 		$updateSpecs = array();
 
 		$updateSettings = $resource->getUpdateSettings();
@@ -178,8 +162,7 @@ class Update extends Request {
 				$castedValue = Enum\VariableType::castValue($value, $variableType);
 				if (!isset($castedValue)) {
 					$typeString = Enum\VariableType::getString($variableType);
-					$error = new Result\Error(Result\Error::InvalidType, 400, "Expecting '{$alias}' to be of type '{$typeString}' but received '{$value}'");
-					return NULL;
+					throw new FREST\Exception(FREST\Exception::InvalidType, "Expecting '{$alias}' to be of type '{$typeString}' but received '{$value}'");
 				}
 
 				// Condition Func
@@ -187,18 +170,12 @@ class Update extends Request {
 				if (isset($conditionFunction)) {
 					if (!method_exists($resource, $conditionFunction)) {
 						$resourceClassName = get_class($resource);
-						$error = new Result\Error(Result\Error::ConditionFunctionMissing, 500, "Function name: '{$conditionFunction}', resource: '{$resourceClassName}'");
-						return NULL;
+						throw new FREST\Exception(FREST\Exception::ConditionFunctionMissing, "Function name: '{$conditionFunction}', resource: '{$resourceClassName}'");
 					}
 
-					$isValueValid = $resource->$conditionFunction($castedValue, $error);
-					if (isset($error)) {
-						return NULL;
-					}
-
+					$isValueValid = $resource->$conditionFunction($castedValue);
 					if (!$isValueValid) {
-						$error = new Result\Error(Result\Error::InvalidFieldValue, 400, "Field: '{$alias}'");
-						return NULL;
+						throw new FREST\Exception(FREST\Exception::InvalidFieldValue, "Field: '{$alias}'");
 					}
 				}
 
@@ -207,8 +184,7 @@ class Update extends Request {
 				if (isset($filterFunction)) {
 					if (!method_exists($resource, $filterFunction)) {
 						$resourceClassName = get_class($resource);
-						$error = new Result\Error(Result\Error::FilterFunctionMissing, 500, "Function name: '{$filterFunction}', resource: '{$resourceClassName}'");
-						return NULL;
+						throw new FREST\Exception(FREST\Exception::FilterFunctionMissing, "Function name: '{$filterFunction}', resource: '{$resourceClassName}'");
 					}
 
 					$castedValue = $resource->$filterFunction($castedValue);
@@ -232,10 +208,9 @@ class Update extends Request {
 	/**
 	 * @param FREST\Resource $resource
 	 * @param array $updateSpecs
-	 * @param Result\Error $error
 	 * @return array|NULL
 	 */
-	protected function generateTableUpdateSpecs($resource, $updateSpecs, &$error = NULL) {
+	protected function generateTableUpdateSpecs($resource, $updateSpecs) {
 		$tableUpdateSpecs = array();
 
 		$tablesAndTheirUpdateSpecs = array();
@@ -252,13 +227,8 @@ class Update extends Request {
 		foreach ($tablesAndTheirUpdateSpecs as $table=>$updateSpecs) {
 			$tableUpdateSpec = new Spec\TableUpdate(
 				$table,
-				$updateSpecs,
-				$error
+				$updateSpecs
 			);
-
-			if (isset($error)) {
-				return NULL;
-			}
 
 			$tableUpdateSpecs[] = $tableUpdateSpec;
 		}
@@ -269,10 +239,9 @@ class Update extends Request {
 
 	/**
 	 * @param array $queryParameterSpecs
-	 * @param Result\Error $error
 	 * @return array
 	 */
-	private function generateAssignmentStringList($queryParameterSpecs, /** @noinspection PhpUnusedParameterInspection */&$error = NULL) {
+	private function generateAssignmentStringList($queryParameterSpecs) {
 		$assignmentStringList = array();
 		
 		/** @var Spec\QueryParameter $queryParameterSpec */
@@ -292,15 +261,12 @@ class Update extends Request {
 	/**
 	 * @param $parameter
 	 * @param $value
-	 * @param $error
 	 * @return bool
+	 * @throws FREST\Exception
 	 */
-	protected function isValidURLParameter($parameter, $value, &$error) {
+	protected function isValidURLParameter($parameter, $value) {
 		/** @noinspection PhpUndefinedClassInspection */
-		$isValid = parent::isValidURLParameter($parameter, $value, $error);
-		if (isset($error)) {
-			return $isValid;
-		}
+		$isValid = parent::isValidURLParameter($parameter, $value);
 
 		if (!$isValid) { // if not already determined to be valid
 			$updateSettings = $this->resource->getUpdateSettings();
@@ -312,8 +278,7 @@ class Update extends Request {
 				$fieldSetting = $this->resource->getFieldSettingForAlias($updateSetting->getAlias());
 				if (!isset($fieldSetting)) {
 					$resourceName = get_class($this->resource);
-					$error = new Result\Error(Result\Error::Config, 500, "No field setting found for condition '{$parameter}' in resource {$resourceName}");
-					return FALSE;
+					throw new FREST\Exception(FREST\Exception::Config, "No field setting found for condition '{$parameter}' in resource {$resourceName}");
 				}
 
 				$isValid = TRUE;

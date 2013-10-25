@@ -195,14 +195,14 @@ abstract class Resource {
 	private $aliasesByField;
 
 	/**
-	 * @var FREST
+	 * @var \FREST
 	 */
 	private $frest;
 	
 
 	/**
 	 * This is where all configuration of the subclass resource should be defined. 
-	 * @param FREST $frest
+	 * @param \FREST $frest
 	 */
 	public function __construct($frest) {
 		$this->frest = $frest;
@@ -845,7 +845,7 @@ abstract class Resource {
 	}
 
 	/**
-	 * @return FREST
+	 * @return \FREST
 	 */
 	public function getFREST()
 	{

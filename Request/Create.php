@@ -33,33 +33,23 @@ class Create extends Request {
 
 	/**
 	 * @param FREST\Resource $resource
-	 * @param null $error
+	 * @throws FREST\Exception
 	 */
-	public function setupWithResource($resource, &$error = NULL) {
-		parent::setupWithResource($resource, $error);
-		if (isset($error)) {
-			return;
-		}
-
+	public function setupWithResource($resource) {
+		parent::setupWithResource($resource);
+		
 		if (isset($this->resourceID)) {
-			$error = new Result\Error(Result\Error::PresentResourceID, 400, '');
-			return;
+			throw new FREST\Exception(FREST\Exception::PresentResourceID);
 		}
 				
-		$this->createSpecs = $this->generateCreateSpecs($this->resource, $error);
-		if (isset($error)) {
-			return;
-		}
-		
-		$this->tableCreateSpecs = $this->generateTableCreateSpecs($this->resource, $this->createSpecs, $error);
-		if (isset($error)) {
-			return;
-		}
+		$this->createSpecs = $this->generateCreateSpecs($this->resource);
+		$this->tableCreateSpecs = $this->generateTableCreateSpecs($this->resource, $this->createSpecs);
 	}
 
 	/**
 	 * @param bool $forceRegen
-	 * @return Result\Create|Result\Error
+	 * @return Result\Create
+	 * @throws FREST\Exception
 	 */
 	public function generateResult($forceRegen = FALSE) {
 		$this->frest->startTimingForLabel(Enum\Timing::PROCESSING, 'create');
@@ -90,8 +80,7 @@ class Create extends Request {
 
 			if ($i > 0) {
 				if (!isset($createdResourceID)) {
-					$error = new Result\Error(Result\Error::SQLError, 500, 'No ID generated or set for the created resource');
-					return $error;
+					throw new FREST\Exception(FREST\Exception::SQLError, 'No ID generated or set for the created resource');
 				}
 
 				// TODO: potential multiple table ID problems
@@ -137,8 +126,7 @@ class Create extends Request {
 					$pdo->rollBack();
 				}
 
-				$error = new Result\Error(Result\Error::SQLError, 500, 'Error inserting into database. '.implode(' ', $createStmt->errorInfo()));
-				return $error;
+				throw new FREST\Exception(FREST\Exception::SQLError, 'Error inserting into database');
 			}
 
 			if ($i == 0) {
@@ -160,8 +148,7 @@ class Create extends Request {
 		$this->frest->startTimingForLabel(Enum\Timing::POST_PROCESSING, 'create');
 
 		if (!isset($createdResourceID)) {
-			$error = new Result\Error(Result\Error::SQLError, 500, 'No ID generated or set for the created resource');
-			return $error;
+			throw new FREST\Exception(FREST\Exception::SQLError, 'No ID generated or set for the created resource');
 		}
 		
 		$this->result = new Result\Create($createdResourceID);
@@ -174,10 +161,10 @@ class Create extends Request {
 
 	/**
 	 * @param FREST\Resource $resource
-	 * @param Result\Error $error
 	 * @return array
+	 * @throws FREST\Exception
 	 */
-	private function generateCreateSpecs($resource, &$error = NULL) {
+	private function generateCreateSpecs($resource) {
 		$createSpecs = array();
 
 		$createSettings = $resource->getCreateSettings();
@@ -212,8 +199,7 @@ class Create extends Request {
 				$castedValue = Enum\VariableType::castValue($value, $variableType);
 				if (!isset($castedValue)) {
 					$typeString = Enum\VariableType::getString($variableType);
-					$error = new Result\Error(Result\Error::InvalidType, 400, "Expecting '{$alias}' to be of type '{$typeString}' but received '{$value}'");
-					return NULL;
+					throw new FREST\Exception(FREST\Exception::InvalidType, "Expecting '{$alias}' to be of type '{$typeString}' but received '{$value}'");
 				}
 				
 				// Condition Func
@@ -221,18 +207,12 @@ class Create extends Request {
 				if (isset($conditionFunction)) {
 					if (!method_exists($resource, $conditionFunction)) {
 						$resourceClassName = get_class($resource);
-						$error = new Result\Error(Result\Error::ConditionFunctionMissing, 500, "Function name: '{$conditionFunction}', resource: '{$resourceClassName}'");
-						return NULL;
+						throw new FREST\Exception(FREST\Exception::ConditionFunctionMissing, "Function name: '{$conditionFunction}', resource: '{$resourceClassName}'");
 					}
 					
-					$isValueValid = $resource->$conditionFunction($castedValue, $error);
-					if (isset($error)) {
-						return NULL;
-					}
-					
+					$isValueValid = $resource->$conditionFunction($castedValue);
 					if (!$isValueValid) {
-						$error = new Result\Error(Result\Error::InvalidFieldValue, 400, "Field: '{$alias}'");
-						return NULL;
+						throw new FREST\Exception(FREST\Exception::InvalidFieldValue, "Field: '{$alias}'");
 					}
 				}
 
@@ -241,8 +221,7 @@ class Create extends Request {
 				if (isset($filterFunction)) {
 					if (!method_exists($resource, $filterFunction)) {
 						$resourceClassName = get_class($resource);
-						$error = new Result\Error(Result\Error::FilterFunctionMissing, 500, "Function name: '{$filterFunction}', resource: '{$resourceClassName}'");
-						return NULL;
+						throw new FREST\Exception(FREST\Exception::FilterFunctionMissing, "Function name: '{$filterFunction}', resource: '{$resourceClassName}'");
 					}
 
 					$castedValue = $resource->$filterFunction($castedValue);
@@ -269,8 +248,7 @@ class Create extends Request {
 					}
 				}
 				$missingParametersString = implode(', ', $missingParameters);
-				$error = new Result\Error(Result\Error::MissingRequiredParams, 400, "Missing parameters: {$missingParametersString}");
-				return NULL;
+				throw new FREST\Exception(FREST\Exception::MissingRequiredParams, "Missing parameters: {$missingParametersString}");
 			}
 		}
 
@@ -285,10 +263,9 @@ class Create extends Request {
 	/**
 	 * @param FREST\Resource $resource
 	 * @param array $createSpecs
-	 * @param Result\Error $error
 	 * @return array|NULL
 	 */
-	protected function generateTableCreateSpecs($resource, $createSpecs, &$error = NULL) {
+	protected function generateTableCreateSpecs($resource, $createSpecs) {
 		$tableCreateSpecs = array();
 
 		$tablesAndTheirCreateSpecs = array();
@@ -304,11 +281,6 @@ class Create extends Request {
 
 		foreach ($tablesAndTheirCreateSpecs as $table=>$createSpecs) {
 			$tableCreateSpec = new Spec\TableCreate($table, $createSpecs);
-			
-			if (isset($error)) {
-				return NULL;
-			}
-			
 			$tableCreateSpecs[] = $tableCreateSpec;
 		}
 
@@ -367,16 +339,12 @@ class Create extends Request {
 	/**
 	 * @param $parameter
 	 * @param $value
-	 * @param $error
 	 * @return bool
+	 * @throws FREST\Exception
 	 */
-	protected function isValidURLParameter($parameter, $value, &$error) {
+	protected function isValidURLParameter($parameter, $value) {
 		/** @noinspection PhpUndefinedClassInspection */
-		$isValid = parent::isValidURLParameter($parameter, $value, $error);
-		if (isset($error)) {
-			return $isValid;
-		}
-
+		$isValid = parent::isValidURLParameter($parameter, $value);
 		if (!$isValid) { // if not already determined to be valid
 			$createSettings = $this->resource->getCreateSettings();
 
@@ -387,8 +355,7 @@ class Create extends Request {
 				$fieldSetting = $this->resource->getFieldSettingForAlias($createSetting->getAlias());
 				if (!isset($fieldSetting)) {
 					$resourceName = get_class($this->resource);
-					$error = new Result\Error(Result\Error::Config, 500, "No field setting found for condition '{$parameter}' in resource {$resourceName}");
-					return FALSE;
+					throw new FREST\Exception(FREST\Exception::Config, "No field setting found for condition '{$parameter}' in resource {$resourceName}");
 				}
 
 				$isValid = TRUE;

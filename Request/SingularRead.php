@@ -22,15 +22,11 @@ class SingularRead extends Read {
 
 	/**
 	 * @param FREST\Resource $resource
-	 * @param Result\Error $error
-	 * @return Result\Error|null|void
+	 * @throws FREST\Exception
 	 */
-	public function setupWithResource($resource, &$error = NULL) {		
-		parent::setupWithResource($resource, $error);
-		if (isset($error)) {
-			return;
-		}
-
+	public function setupWithResource($resource) {
+		parent::setupWithResource($resource);
+		
 		// Resource ID
 		if (isset($this->resourceID)) {
 			/** @var Setting\Field $fieldSetting */
@@ -41,8 +37,7 @@ class SingularRead extends Read {
 
 			if (!isset($parsedResourceID)) {
 				$typeString = Enum\VariableType::getString($idType);
-				$error = new Result\Error(Result\Error::InvalidType, 400, "Resource ID needs to be of type '{$typeString}' but was supplied with '{$this->resourceID}'");
-				return;
+				throw new FREST\Exception(FREST\Exception::InvalidType, "Resource ID needs to be of type '{$typeString}' but was supplied with '{$this->resourceID}'");
 			}
 
 			$this->resourceID = $parsedResourceID;
@@ -51,7 +46,8 @@ class SingularRead extends Read {
 
 	/**
 	 * @param bool $forceRegen
-	 * @return Result\SingularRead|Result\Error
+	 * @return Result\SingularRead
+	 * @throws FREST\Exception
 	 */
 	public function generateResult($forceRegen = FALSE) {
 		$this->frest->startTimingForLabel(Enum\Timing::PROCESSING, 'singularread');
@@ -61,21 +57,10 @@ class SingularRead extends Read {
 			return $otherResult;
 		}
 		
-		$fieldString = $this->generateFieldString($this->fieldSpecs, $error);
-		if (isset($error)) {
-			return $error;
-		}
+		$fieldString = $this->generateFieldString($this->fieldSpecs);
+		$tablesToReadString = $this->generateTableString($this->tableSpecs);
+		$joinString = $this->generateJoinString($this->resource, $this->joinSpecs);
 		
-		$tablesToReadString = $this->generateTableString($this->tableSpecs, $error);
-		if (isset($error)) {
-			return $error;
-		}
-
-		$joinString = $this->generateJoinString($this->resource, $this->joinSpecs, $error);
-		if (isset($error)) {
-			return $error;
-		}
-
 		/** @var Setting\Field $idFieldSetting */
 		$idField = $this->resource->getIDField($idFieldSetting);
 		$tableWithID = $this->resource->getTableForField($idField);
@@ -93,23 +78,19 @@ class SingularRead extends Read {
 		));
 
 		if (!$success) {
-			return new Result\Error(Result\Error::SQLError, 500, implode(' - ', $stmt->errorInfo()));
+			throw new FREST\Exception(FREST\Exception::SQLError, 'Failed reading resource from database');
 		}
 
 		$objects = $stmt->fetchAll(\PDO::FETCH_OBJ);
 
 		$resultsCount = count($objects);
 		if ($resultsCount == 0) {
-			return new Result\Error(Result\Error::NoResults, 404, '');
+			throw new FREST\Exception(FREST\Exception::NoResults);
 		}
 
 		$this->frest->stopTimingForLabel(Enum\Timing::SQL, 'singularread');
 
-		$this->parseObjects($this->resource, $objects, $this->readSettings, NULL, $error);
-		if (isset($error)) {
-			return $error;
-		}
-		
+		$this->parseObjects($this->resource, $objects, $this->readSettings);
 		$this->result = new Result\SingularRead($objects[0]);
 
 		return $this->result;

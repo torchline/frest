@@ -26,9 +26,6 @@ class TableCreate {
 		$this->table = $table;
 		
 		$this->queryParameterSpecs = $this->generateQueryParameterSpecs($createSpecs);
-		if (isset($error)) {
-			return;
-		}
 	}
 
 

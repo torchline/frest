@@ -27,28 +27,22 @@ class Delete extends Request {
 
 	/**
 	 * @param FREST\Resource $resource
-	 * @param null $error
+	 * @throws FREST\Exception
 	 */
-	public function setupWithResource($resource, &$error = NULL) {
-		parent::setupWithResource($resource, $error);
-		if (isset($error)) {
-			return;
-		}
+	public function setupWithResource($resource) {
+		parent::setupWithResource($resource);
 
 		if (!isset($this->resourceID)) {
-			$error = new Result\Error(Result\Error::MissingResourceID, 400, '');
-			return;
+			throw new FREST\Exception(FREST\Exception::MissingResourceID);
 		}
 		
-		$this->tableDeleteSpecs = $this->generateTableDeleteSpecs($this->resource, $error);
-		if (isset($error)) {
-			return;
-		}
+		$this->tableDeleteSpecs = $this->generateTableDeleteSpecs($this->resource);
 	}
 
 	/**
 	 * @param bool $forceRegen
-	 * @return Result\Delete|Result\Error
+	 * @return Result\Delete
+	 * @throws FREST\Exception
 	 */
 	public function generateResult($forceRegen = FALSE) {
 		$this->frest->startTimingForLabel(Enum\Timing::PROCESSING, 'delete');
@@ -92,9 +86,7 @@ class Delete extends Request {
 				if ($isPerformingTransaction) {
 					$pdo->rollBack();
 				}
-				
-				$error = new Result\Error(Result\Error::SQLError, 500, 'Error deleting from database. '.implode(' ', $deleteStmt->errorInfo()));
-				return $error;
+				throw new FREST\Exception(FREST\Exception::SQLError, 'Error deleting from database');
 			}
 
 			$this->frest->stopTimingForLabel(Enum\Timing::SQL, 'delete');
@@ -116,10 +108,9 @@ class Delete extends Request {
 
 	/**
 	 * @param FREST\Resource $resource
-	 * @param Result\Error $error
 	 * @return array
 	 */
-	private function generateTableDeleteSpecs($resource, /** @noinspection PhpUnusedParameterInspection */&$error = NULL) {
+	private function generateTableDeleteSpecs($resource) {
 		$tableDeleteSpecs = array();
 
 		$tableSettings = $resource->getTableSettings();

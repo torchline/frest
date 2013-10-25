@@ -1,6 +1,7 @@
 {
     "name": "torchline/frest",
     "require": {
-        "php": ">=5.3.0"
+        "php": ">=5.3.0",
+        "torchline/snoauth": "dev-master"
     }
 }

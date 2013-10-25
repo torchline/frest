@@ -20,7 +20,7 @@ require_once(dirname(__FILE__) . '/../Func/Resource.php');
  */
 abstract class Request {
 	
-	/** @var FREST\FREST */
+	/** @var FREST */
 	protected $frest;
 	
 	/** @var int */
@@ -51,7 +51,7 @@ abstract class Request {
 	protected $miscParameters;
 
 	/**
-	 * @param FREST\FREST $frest
+	 * @param FREST $frest
 	 * @param int $resourceID
 	 * @param array $parameters
 	 * @param string $resourceFunctionName
@@ -76,23 +76,16 @@ abstract class Request {
 	 * generates all "spec" data (metadata for the query).
 	 *
 	 * @param FREST\Resource $resource
-	 * @param Result\Error $error
 	 */
-	public function setupWithResource($resource, &$error = NULL) {
+	public function setupWithResource($resource) {
 		$this->resource = $resource;
 
 		// Resource Function
 		if (isset($this->resourceFunctionName)) {
-			$this->setupResourceFunction($error);
-			if (isset($error)) {
-				return;
-			}
+			$this->setupResourceFunction();
 		}
 		else {
-			$this->checkForInvalidURLParameters($error);
-			if (isset($error)) {
-				return;
-			}
+			$this->checkForInvalidURLParameters();
 		}
 	}
 
@@ -122,20 +115,15 @@ abstract class Request {
 	
 	
 	/**
-	 * @param Result\Error $error
-	 *
 	 * @return bool
+	 * @throws FREST\Exception
 	 */
-	protected function checkForInvalidURLParameters(&$error = NULL) {
+	protected function checkForInvalidURLParameters() {
 		foreach($this->parameters as $parameter=>$value) {
-			$isValid = $this->isValidURLParameter($parameter, $value, $error);
-			if (isset($error)) {
-				return FALSE;
-			}
+			$isValid = $this->isValidURLParameter($parameter, $value);
 
 			if (!$isValid) {
-				$error = new Result\Error(Result\Error::InvalidField, 400, "Invalid parameter used in query: '{$parameter}'");
-				return FALSE;
+				throw new FREST\Exception(FREST\Exception::InvalidField, "Invalid parameter used in query: '{$parameter}'");
 			}
 		}
 
@@ -143,15 +131,14 @@ abstract class Request {
 	}
 
 	/**
-	 * @param Result\Error $error
+	 * @throws FREST\Exception
 	 */
-	protected function setupResourceFunction(&$error = NULL) {
+	protected function setupResourceFunction() {
 		$resourceFunctions = $this->resource->getResourceFunctions();
 
 		// check if valid Func name
 		if (!isset($resourceFunctions) || !isset($resourceFunctions[$this->resourceFunctionName])) {
-			$error = new Result\Error(Result\Error::ResourceFunctionDoesntExist, 400, "Function name: '{$this->resourceFunctionName}'");
-			return;
+			throw new FREST\Exception(FREST\Exception::ResourceFunctionDoesntExist, "Function name: '{$this->resourceFunctionName}'");
 		}
 
 		/** @var Func\Resource $resourceFunction */
@@ -164,9 +151,8 @@ abstract class Request {
 		if ($requiredMethod != $currentMethod) {
 			$currentMethodString = Enum\Method::getString($currentMethod);
 			$requiredMethodString = Enum\Method::getString($requiredMethod);
-			
-			$error = new Result\Error(Result\Error::MismatchingResourceFunctionMethod, 400, "Requires '{$requiredMethodString}' but using '{$currentMethodString}'");
-			return;
+
+			throw new FREST\Exception(FREST\Exception::MismatchingResourceFunctionMethod, "Requires '{$requiredMethodString}' but using '{$currentMethodString}'");
 		}
 
 		// check for invalid parameters and build parameter list for Func
@@ -176,8 +162,7 @@ abstract class Request {
 
 			if (!$isValidMiscParam) {
 				if (!isset($resourceFunctionParameters[$parameterName])) {
-					$error = new Result\Error(Result\Error::InvalidFunctionParameter, 400, "Parameter name: '{$parameterName}'");
-					return;
+					throw new FREST\Exception(FREST\Exception::InvalidFunctionParameter, "Parameter name: '{$parameterName}'");
 				}
 
 				$functionParameters[$parameterName] = $value;
@@ -197,8 +182,7 @@ abstract class Request {
 
 					if (!isset($castedValue)) {
 						$typeString = Enum\VariableType::getString($variableType);
-						$error = new Result\Error(Result\Error::InvalidType, 400, "Expecting parameter '{$parameterName}' to be of type '$typeString' but received '{$value}'");
-						return;
+						throw new FREST\Exception(FREST\Exception::InvalidType, "Expecting parameter '{$parameterName}' to be of type '$typeString' but received '{$value}'");
 					}
 
 					$functionParameters[$parameterName] = $castedValue;
@@ -210,16 +194,14 @@ abstract class Request {
 
 			if (count($missingParameterNames) > 0) {
 				$missingString = implode(', ', $missingParameterNames);
-				$error = new Result\Error(Result\Error::MissingRequiredFunctionParameter, 400, "Parameter name: '{$missingString}'");
-				return;
+				throw new FREST\Exception(FREST\Exception::MissingRequiredFunctionParameter, "Parameter name: '{$missingString}'");
 			}
 		}
 
 		// Check for Func implementation existence
 		if (!method_exists($this->resource, $this->resourceFunctionName)) {
 			$resourceName = get_class($this->resource);
-			$error = new Result\Error(Result\Error::ResourceFunctionMissing, 500, "Function name: '{$this->resourceFunctionName}', resource: '{$resourceName}'");
-			return;
+			throw new FREST\Exception(FREST\Exception::ResourceFunctionMissing, "Function name: '{$this->resourceFunctionName}', resource: '{$resourceName}'");
 		}
 
 		if ($resourceFunction->getRequiresResourceID()) {
@@ -243,20 +225,17 @@ abstract class Request {
 	/**
 	 * @param $parameter
 	 * @param $value
-	 * @param $error
 	 * @return bool
+	 * @throws FREST\Exception
 	 */
-	protected function isValidURLParameter($parameter, $value, &$error) {		
+	protected function isValidURLParameter($parameter, $value) {
 		if (is_array($value)) {
-			$error = new Result\Error(Result\Error::InvalidUsage, 400, "Parameter values (specifically '{$parameter}') are not allowed to be arrays");
-			return FALSE;
+			throw new FREST\Exception(FREST\Exception::InvalidUsage, "Parameter values (specifically '{$parameter}') are not allowed to be arrays");
 		}
 		else {
 			$isValid = isset($this->miscParameters[$parameter]);
 		}
 		
-		
-				
 		return $isValid;
 	}
 	

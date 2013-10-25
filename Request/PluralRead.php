@@ -36,7 +36,7 @@ class PluralRead extends Read {
 
 
 	/**
-	 * @param FREST\FREST $frest
+	 * @param FREST $frest
 	 * @param null $parameters
 	 * @param null $resourceFunctionName
 	 * @param null $parentAlias
@@ -51,33 +51,19 @@ class PluralRead extends Read {
 
 	/**
 	 * @param FREST\Resource $resource
-	 * @param null $error
 	 */
-	public function setupWithResource($resource, &$error = NULL) {
-		parent::setupWithResource($resource, $error);
-		if (isset($error)) {
-			return;
-		}
-
-		// Order Bys
-		$this->orderSpecs = $this->generateOrderSpecs($error);
-		if (isset($error)) {
-			return;
-		}
-
-		// Condition
-		$this->conditionSpecs = $this->generateConditionSpecs($error);
-		if (isset($error)) {
-			return;
-		}
+	public function setupWithResource($resource) {
+		parent::setupWithResource($resource);
 		
-		// Query Parameters
+		$this->orderSpecs = $this->generateOrderSpecs();
+		$this->conditionSpecs = $this->generateConditionSpecs();
 		$this->queryParameterSpecs = NULL; // built in generateResult along with conditionString
 	}
 
 	/**
 	 * @param bool $forceRegen
 	 * @return Result\PluralRead|Result\Error
+	 * @throws FREST\Exception
 	 */
 	public function generateResult($forceRegen = FALSE) {
 		$this->frest->startTimingForLabel(Enum\Timing::PROCESSING, 'pluralread');
@@ -87,48 +73,14 @@ class PluralRead extends Read {
 			return $otherResult;
 		}
 
-		// Fields String
-		$fieldString = $this->generateFieldString($this->fieldSpecs, $error);
-		if (isset($error)) {
-			return $error;
-		}
-
-		// Tables String
-		$tablesToReadString = $this->generateTableString($this->tableSpecs, $error);
-		if (isset($error)) {
-			return $error;
-		}
+		$fieldString = $this->generateFieldString($this->fieldSpecs);
+		$tablesToReadString = $this->generateTableString($this->tableSpecs);
+		$conditionString = $this->processConditionSpecs($this->conditionSpecs, $this->queryParameterSpecs);
+		$offset = $this->generateOffset($this->queryParameterSpecs);
+		$limit = $this->generateLimit($this->resource, $this->queryParameterSpecs);
+		$orderByString = $this->generateOrderString($this->orderSpecs);
+		$joinsString = $this->generateJoinString($this->resource, $this->joinSpecs);
 		
-		// Conditions String + Query Parameter Specs
-		$conditionString = $this->processConditionSpecs($this->conditionSpecs, $this->queryParameterSpecs, $error);
-		if (isset($error)) {
-			return $error;
-		}
-		
-		// Offset
-		$offset = $this->generateOffset($this->queryParameterSpecs, $error);
-		if (isset($error)) {
-			return $error;
-		}
-
-		// Offset
-		$limit = $this->generateLimit($this->resource, $this->queryParameterSpecs, $error);
-		if (isset($error)) {
-			return $error;
-		}
-
-		// Order By String
-		$orderByString = $this->generateOrderString($this->orderSpecs, $error);
-		if (isset($error)) {
-			return $error;
-		}
-		
-		// Join String
-		$joinsString = $this->generateJoinString($this->resource, $this->joinSpecs, $error);
-		if (isset($error)) {
-			return $error;
-		}
-
 		$this->frest->stopTimingForLabel(Enum\Timing::PROCESSING, 'pluralread');
 		$this->frest->startTimingForLabel(Enum\Timing::SQL, 'pluralread');
 
@@ -179,15 +131,13 @@ class PluralRead extends Read {
 		}
 
 		if (!$resultsStmt->execute()) {
-			$error = new Result\Error(Result\Error::SQLError, 500, 'Error querying database for Result. '.implode(' ', $resultsStmt->errorInfo()));
-			return $error;
+			throw new FREST\Exception(FREST\Exception::SQLError, 'Error querying database for Result');
 		}
 
 		$objects = $resultsStmt->fetchAll(\PDO::FETCH_OBJ);
 
 		if (!$countStmt->execute()) {
-			$error = new Result\Error(Result\Error::SQLError, 500, 'Error querying database for count. '.implode(' ', $countStmt->errorInfo()));
-			return $error;
+			throw new FREST\Exception(FREST\Exception::SQLError, 'Error querying database for count');
 		}
 
 		$countResult = $countStmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -195,11 +145,7 @@ class PluralRead extends Read {
 
 		$this->frest->stopTimingForLabel(Enum\Timing::SQL, 'pluralread');
 
-		$this->parseObjects($this->resource, $objects, $this->readSettings, NULL, $error);
-		if (isset($error)) {
-			return $error;
-		}
-
+		$this->parseObjects($this->resource, $objects, $this->readSettings);
 		$this->result = new Result\PluralRead($objects, $limit, $offset, $count);
 
 		return $this->result;
@@ -207,10 +153,9 @@ class PluralRead extends Read {
 	
 	
 	/** 
-	 * @param Result\Error $error
 	 * @return array
 	 */
-	private function generateConditionSpecs(/** @noinspection PhpUnusedParameterInspection */&$error = NULL) {
+	private function generateConditionSpecs() {
 		$conditionSpecs = array();
 		
 		$conditionSettings = $this->resource->getConditionSettings();
@@ -248,10 +193,10 @@ class PluralRead extends Read {
 	/**
 	 * @param array $conditionSpecs
 	 * @param array $queryParameterSpecs
-	 * @param FRError null $error
 	 * @return string
+	 * @throws FREST\Exception
 	 */
-	private function processConditionSpecs($conditionSpecs, &$queryParameterSpecs, &$error = NULL) {
+	private function processConditionSpecs($conditionSpecs, &$queryParameterSpecs) {
 		$conditionString = '';
 		$queryArrayConditionCount = 0;
 		
@@ -278,13 +223,9 @@ class PluralRead extends Read {
 					$conditionSpec->getVariableType(),
 					$whiteListedFunctions, 
 					$parsedValue, 
-					$parsedValueVariableType,
-					$error
+					$parsedValueVariableType
 				);
-				if (isset($error)) {
-					return NULL;
-				}
-
+				
 				if (isset($functionUsed)) {
 					$queryOperator = $functionUsed->getSqlOperator();
 					
@@ -344,8 +285,7 @@ class PluralRead extends Read {
 						case Enum\VariableType::ARRAY_FLOAT:
 						case Enum\VariableType::ARRAY_STRING:
 							$variableTypeString = Enum\VariableType::getString($variableType);
-							$error = new Result\Error(Result\Error::Config, 500, "Invalid type set for condition '{$alias}': '{$variableTypeString}'");
-							return NULL;
+							throw new FREST\Exception(FREST\Exception::Config, "Invalid type set for condition '{$alias}': '{$variableTypeString}'");
 							break;
 							
 						default:
@@ -355,8 +295,7 @@ class PluralRead extends Read {
 					$castedValue = Enum\VariableType::castValue($conditionSpec->getValue(), $variableType);
 					if (!isset($castedValue)) {
 						$variableTypeString = Enum\VariableType::getString($variableType);
-						$error = new Result\Error(Result\Error::InvalidType, 400, "Expecting field '{$alias}' to be of type '{$variableTypeString}' but received '{$conditionSpec->getValue()}'");
-						return NULL;
+						throw new FREST\Exception(FREST\Exception::InvalidType, "Expecting field '{$alias}' to be of type '{$variableTypeString}' but received '{$conditionSpec->getValue()}'");
 					}
 
 					$queryParameterName = ":{$alias}";
@@ -390,17 +329,16 @@ class PluralRead extends Read {
 
 	/**
 	 * @param array $queryParameterSpecs
-	 * @param Result\Error $error
 	 * @return int
+	 * @throws FREST\Exception
 	 */
-	private function generateOffset(&$queryParameterSpecs, &$error = NULL) {
+	private function generateOffset(&$queryParameterSpecs) {
 		$offset = isset($this->parameters['offset']) ? $this->parameters['offset'] : 0;
 		
 		$castedOffset = Enum\VariableType::castValue($offset, Enum\VariableType::INT);
 		if (!isset($castedOffset)) {
 			$typeString = Enum\VariableType::getString(Enum\VariableType::INT);
-			$error = new Result\Error(Result\Error::InvalidType, 400, "Expecting offset to be of type '{$typeString}' but received '{$offset}'.");
-			return 0;
+			throw new FREST\Exception(FREST\Exception::InvalidType, "Expecting offset to be of type '{$typeString}' but received '{$offset}'");
 		}
 		
 		$offsetQueryParameterSpec = new Spec\QueryParameter(
@@ -419,23 +357,21 @@ class PluralRead extends Read {
 	/**
 	 * @param FREST\Resource $resource
 	 * @param array $queryParameterSpecs
-	 * @param Result\Error $error
 	 * @return int
+	 * @throws FREST\Exception
 	 */
-	private function generateLimit($resource, &$queryParameterSpecs, &$error = NULL) {
+	private function generateLimit($resource, &$queryParameterSpecs) {
 		$limit = isset($this->parameters['limit']) ? $this->parameters['limit'] : $resource->getDefaultLimit();
 
 		$castedLimit = Enum\VariableType::castValue($limit, Enum\VariableType::INT);
 		if (!isset($castedLimit)) {
 			$typeString = Enum\VariableType::getString(Enum\VariableType::INT);
-			$error = new Result\Error(Result\Error::InvalidType, 400, "Expecting offset to be of type '{$typeString}' but received '{$limit}'.");
-			return 0;
+			throw new FREST\Exception(FREST\Exception::InvalidType, "Expecting offset to be of type '{$typeString}' but received '{$limit}'.");
 		}
 		
 		$maxLimit = $resource->getMaxLimit();
 		if ($castedLimit > $maxLimit) {
-			$error = new Result\Error(Result\Error::InvalidValue, 400, "The limit for this resource must not exceed {$maxLimit}. A limit of {$castedLimit} was supplied.");
-			return 0;
+			throw new FREST\Exception(FREST\Exception::InvalidValue, "The limit for this resource must not exceed {$maxLimit}. A limit of {$castedLimit} was supplied.");
 		}
 		
 		$limitQueryParameter = new Spec\QueryParameter(
@@ -452,18 +388,17 @@ class PluralRead extends Read {
 
 
 	/**
-	 * @param Result\Error $error
 	 * @return array
+	 * @throws FREST\Exception
 	 */
-	private function generateOrderSpecs(&$error = NULL) {
+	private function generateOrderSpecs() {
 		$orderSpecs = array();
 		
 		if (isset($this->parameters['orderBy'])) {
 			$orderByParameterString = $this->parameters['orderBy'];
 			
 			if (strlen($orderByParameterString) == 0) {
-				$error = new Result\Error(Result\Error::InvalidValue, 400, "An empty value was supplied to 'orderBy'");
-				return NULL;
+				throw new FREST\Exception(FREST\Exception::InvalidValue, "An empty value was supplied to 'orderBy'");
 			}
 
 			$orderByParameters = explode(',', $orderByParameterString);
@@ -476,13 +411,11 @@ class PluralRead extends Read {
 				
 				$fieldSetting = $this->resource->getFieldSettingForAlias($alias);
 				if (!isset($fieldSetting)) {
-					$error = new Result\Error(Result\Error::InvalidValue, 400, "The resource does not have a field named '{$alias}'");
-					return NULL;
+					throw new FREST\Exception(FREST\Exception::InvalidValue, "The resource does not have a field named '{$alias}'");
 				}
 				
 				if (!isset($orderSettings[$alias])) {
-					$error = new Result\Error(Result\Error::InvalidValue, 400, "The resource does not allow ordering with '{$alias}'");
-					return NULL;
+					throw new FREST\Exception(FREST\Exception::InvalidValue, "The resource does not allow ordering with '{$alias}'");
 				}
 				
 				/** @var Setting\Order $orderSetting */
@@ -498,14 +431,12 @@ class PluralRead extends Read {
 						$direction = 'DESC';
 					}
 					else {
-						$error = new Result\Error(Result\Error::InvalidValue, 400, "Order direction '{$userDirection}' is not valid");
-						return NULL;
+						throw new FREST\Exception(FREST\Exception::InvalidValue, "Order direction '{$userDirection}' is not valid");
 					}
 				}
 				else {
 					if (!$orderSetting->getAscendingEnabled() && !$orderSetting->getDescendingEnabled()) {
-						$error = new Result\Error(Result\Error::InvalidValue, 400, "The resource does not allow ordering with '{$alias}'");
-						return NULL;
+						throw new FREST\Exception(FREST\Exception::InvalidValue, "The resource does not allow ordering with '{$alias}'");
 					}
 					
 					$ascendingEnabled = $orderSetting->getAscendingEnabled();
@@ -537,10 +468,9 @@ class PluralRead extends Read {
 
 	/**
 	 * @param array $orderSpecs
-	 * @param Result\Error $error
 	 * @return string
 	 */
-	private function generateOrderString($orderSpecs, /** @noinspection PhpUnusedParameterInspection */&$error = NULL) {
+	private function generateOrderString($orderSpecs) {
 		$orderStrings = array();
 
 		if (isset($orderSpecs)) {
@@ -571,11 +501,11 @@ class PluralRead extends Read {
 	 * @param array $functions
 	 * @param mixed $parsedValue
 	 * @param int $parsedValueVariableType
-	 * @param Result\Error $error
 	 * 
 	 * @return Func\Condition
+	 * @throws FREST\Exception
 	 */
-	private function checkForFunctions($valueToCheck, $valueVariableType, $functions, &$parsedValue, &$parsedValueVariableType, &$error = NULL) {
+	private function checkForFunctions($valueToCheck, $valueVariableType, $functions, &$parsedValue, &$parsedValueVariableType) {
 		$functionUsed = NULL;
 		
 		/** @var Func\Condition $function */
@@ -596,8 +526,7 @@ class PluralRead extends Read {
 				$innerValue = trim(substr($valueToCheck, strlen($functionName) + 1, -1));
 
 				if (strlen($innerValue) == 0) {
-					$error = new Result\Error(Result\Error::InvalidValue, 400, "Empty value specified in Func '{$functionName}'");
-					return NULL;
+					throw new FREST\Exception(FREST\Exception::InvalidValue, "Empty value specified in Func '{$functionName}'");
 				}
 
 				if (isset($functionReplacements)) {
@@ -613,8 +542,7 @@ class PluralRead extends Read {
 				$castedValue = Enum\VariableType::castValue($innerValue, $innerValueVariableType);				
 				if (!isset($castedValue)) {
 					$variableTypeString = Enum\VariableType::getString($innerValueVariableType);
-					$error = new Result\Error(Result\Error::InvalidType, 400, "Expecting value for Func '{$functionName}' to be of type '{$variableTypeString}' but received '{$innerValue}'");
-					return NULL;
+					throw new FREST\Exception(FREST\Exception::InvalidType, "Expecting value for Func '{$functionName}' to be of type '{$variableTypeString}' but received '{$innerValue}'");
 				}
 				
 				$parsedValue = $castedValue;
@@ -631,16 +559,12 @@ class PluralRead extends Read {
 	/**
 	 * @param $parameter
 	 * @param $value
-	 * @param $error
 	 * @return bool
+	 * @throws FREST\Exception
 	 */
-	protected function isValidURLParameter($parameter, $value, &$error) {
+	protected function isValidURLParameter($parameter, $value) {
 		/** @noinspection PhpUndefinedClassInspection */
-		$isValid = parent::isValidURLParameter($parameter, $value, $error);
-		if (isset($error)) {
-			return $isValid;
-		}
-		
+		$isValid = parent::isValidURLParameter($parameter, $value);	
 		if (!$isValid) { // if not already determined to be valid
 			$conditionSettings = $this->resource->getConditionSettings();
 			
@@ -651,8 +575,7 @@ class PluralRead extends Read {
 				$fieldSetting = $this->resource->getFieldSettingForAlias($conditionSetting->getAlias());
 				if (!isset($fieldSetting)) {
 					$resourceName = get_class($this->resource);
-					$error = new Result\Error(Result\Error::Config, 500, "No field setting found for condition '{$parameter}' in resource {$resourceName}");
-					return FALSE;
+					throw new FREST\Exception(FREST\Exception::Config, "No field setting found for condition '{$parameter}' in resource {$resourceName}");
 				}
 
 				$isValid = TRUE;

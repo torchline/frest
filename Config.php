@@ -137,28 +137,28 @@ class Config {
 	}
 
 	/**
-	 * @param FREST $frest
+	 * @param \FREST $frest
 	 * @param string $path
 	 * @return Config
 	 * @throws \Exception
 	 */
-	public static function fromFile($frest, $path = 'config.php') {
+	public static function fromFile($frest, $path = 'frest-config.php') {
 		$frest->startTimingForLabel(Enum\Timing::SETUP, 'config');
 		
 		if (!file_exists($path)) {
-			throw new \Exception("No config file at '{$path}'", 500);
+			throw new \Exception("No frest config file at '{$path}'", 500);
 		}
 
 		/** @noinspection PhpIncludeInspection */
 		include($path);
 						
 		if (!isset($config)) {
-			throw new \Exception("No config variable found in config file at '{$path}'", 500);
+			throw new \Exception("No config variable found in frest config file at '{$path}'", 500);
 		}
 		
 		// PDO
 		if (!isset($config['db'])) {
-			throw new \Exception("No db config Setting specified in config file at '{$path}'", 500);
+			throw new \Exception("No db config Setting specified in frest config file at '{$path}'", 500);
 		}
 
 		// create Config

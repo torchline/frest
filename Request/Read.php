@@ -54,7 +54,7 @@ abstract class Read extends Request\Request {
 	protected $parentAlias;
 
 	/**
-	 * @param FREST\FREST $frest
+	 * @param FREST $frest
 	 * @param string $resourceID
 	 * @param array $parameters
 	 * @param string $resourceFunctionName
@@ -71,50 +71,32 @@ abstract class Read extends Request\Request {
 
 	/**
 	 * @param FREST\Resource $resource
-	 * @param null $error
+	 * @throws FREST\Exception
 	 */
-	public function setupWithResource($resource, &$error = NULL) {
+	public function setupWithResource($resource) {
 		/** @noinspection PhpUndefinedClassInspection */
-		parent::setupWithResource($resource, $error);
-		if (isset($error)) {
-			return;
-		}
+		parent::setupWithResource($resource);
 		
-		$this->readSettings = $this->generateReadSettings($this->resource, $this->parameters, NULL, $error);
-		if (isset($error)) {
-			return;
-		}
-		
+		$this->readSettings = $this->generateReadSettings($this->resource, $this->parameters);
 		if (!isset($this->readSettings)) {
-			$error = new Result\Error(Result\Error::Config, 500, "No read Setting exist or none are default");
-			return;
+			throw new FREST\Exception(FREST\Exception::Config, "No read Setting exist or none are default");
 		}
 		
-		$this->joinSpecs = $this->generateJoinSpecs($this->resource, $this->readSettings, NULL, $error);
-		if (isset($error)) {
-			return;
-		}
-
-		$this->fieldSpecs = $this->generateFieldSpecs($this->resource, $this->readSettings, FALSE, NULL, $error);
-		if (isset($error)) {
-			return;
-		}
+		$this->joinSpecs = $this->generateJoinSpecs($this->resource, $this->readSettings);
+		$this->fieldSpecs = $this->generateFieldSpecs($this->resource, $this->readSettings);
 		
-		$this->tableSpecs = $this->generateTableSpecs($this->resource, $this->readSettings, $error);
-		if (isset($error)) {
-			return;
-		}
+		$this->tableSpecs = $this->generateTableSpecs($this->resource, $this->readSettings);
 	}
 
 	/**
 	 * @param FREST\Resource $resource
 	 * @param array $parameters
 	 * @param string $partialPrefix
-	 * @param Result\Error $error
 	 *
 	 * @return array|NULL
+	 * @throws FREST\Exception
 	 */
-	protected function generateReadSettings($resource, $parameters, $partialPrefix = NULL, &$error = NULL) {
+	protected function generateReadSettings($resource, $parameters, $partialPrefix = NULL) {
 		$readSettings = array();
 
 		$allReadSettings = $resource->getReadSettings();
@@ -130,25 +112,20 @@ abstract class Read extends Request\Request {
 			
 			foreach ($userSpecifiedAliases as $alias) {
 				if ($alias == '*') {
-					$error = new Result\Error(Result\Error::InvalidUsage, 400, "Wildcard field parameter must be specified before any others (for readability).");
-					return NULL;
+					throw new FREST\Exception(FREST\Exception::InvalidUsage, "Wildcard field parameter must be specified before any others (for readability).");
 				}
 				
 				$readSetting = isset($allReadSettings[$alias]) ? $allReadSettings[$alias] : NULL;
 
 				if (isset($readSetting)) {
 					if ($hasWildcard) {
-						$error = new Result\Error(Result\Error::InvalidUsage, 400, "Fields specified after a wildcard that do not contain partial syntax are unnecessary");
-						return NULL;
+						throw new FREST\Exception(FREST\Exception::InvalidUsage, "Fields specified after a wildcard that do not contain partial syntax are unnecessary");
 					}
 					
 					$readSettings[$alias] = $readSetting;
 				}
 				else {
-					$partialReadSetting = $this->generatePartialReadSetting($resource, $alias, $partialPrefix, $error);
-					if (isset($error)) {
-						return NULL;
-					}
+					$partialReadSetting = $this->generatePartialReadSetting($resource, $alias, $partialPrefix);
 
 					if (isset($partialReadSetting)) {
 						$readSetting[$alias] = $partialReadSetting;
@@ -167,10 +144,7 @@ abstract class Read extends Request\Request {
 		}
 		
 		if (count($readSettings) > 0) {
-			$this->addRequiredReadSettings($resource, $readSettings, $error);
-			if (isset($error)) {
-				return NULL;
-			}
+			$this->addRequiredReadSettings($resource, $readSettings);
 			
 			return $readSettings;
 		}
@@ -182,18 +156,17 @@ abstract class Read extends Request\Request {
 	 * @param FREST\Resource $resource
 	 * @param string $alias
 	 * @param string|NULL $partialPrefix
-	 * @param Result\Error $error
 	 * @return Setting\SingularResourceRead|null
+	 * @throws FREST\Exception
 	 */
-	private function generatePartialReadSetting($resource, $alias, $partialPrefix = NULL, &$error = NULL) {
+	private function generatePartialReadSetting($resource, $alias, $partialPrefix = NULL) {
 		$resourceName = get_class($resource);
 		
 		// check for Setting for partial object alias
 		$aliasFromPartial = $this->parsePartialAliasFromString($alias, $definedSubAliases);
 
 		if (!isset($aliasFromPartial)) {
-			$error = new Result\Error(Result\Error::InvalidField, 400, "Invalid field name specified in 'fields' parameter: '{$alias}' on resource {$resourceName}");
-			return NULL;
+			throw new FREST\Exception(FREST\Exception::InvalidField, "Invalid field name specified in 'fields' parameter: '{$alias}' on resource {$resourceName}");
 		}
 
 		$allReadSettings = $resource->getReadSettings();
@@ -202,23 +175,16 @@ abstract class Read extends Request\Request {
 		$readSetting = $allReadSettings[$aliasFromPartial];
 
 		if (!isset($readSetting)) {
-			$error = new Result\Error(Result\Error::InvalidField, 400, "Invalid field name specified in 'fields' parameter using partial syntax: '{$aliasFromPartial}' on resource {$resourceName}");
-			return NULL;
+			throw new FREST\Exception(FREST\Exception::InvalidField, "Invalid field name specified in 'fields' parameter using partial syntax: '{$aliasFromPartial}' on resource {$resourceName}");
 		}
 
 		if (!($readSetting instanceof Setting\SingularResourceRead) && !($readSetting instanceof Setting\PluralResourceRead)) {
-			$error = new Result\Error(Result\Error::PartialSyntaxNotSupported, 400, "The field '{$aliasFromPartial}' on resource {$resourceName} does not respond to partial object syntax");
-			return NULL;
+			throw new FREST\Exception(FREST\Exception::PartialSyntaxNotSupported, "The field '{$aliasFromPartial}' on resource {$resourceName} does not respond to partial object syntax");
 		}
 
 		// load external resource referenced by this resource
-		$loadedResource = $this->getLoadedResource($readSetting->getResourceName(), $this, $error);
-		if (isset($error)) {
-			return NULL;
-		}
-
+		$loadedResource = $this->getLoadedResource($readSetting->getResourceName(), $this);
 		$allLoadedResourceReadSettings = $loadedResource->getReadSettings();
-
 		$loadedResourceReadSettings = array();
 
 		// check if the referenced resource has all partial fields specified
@@ -227,8 +193,7 @@ abstract class Read extends Request\Request {
 				$subAliasFromPartial = $this->parsePartialAliasFromString($subAlias, $deepAliases);
 
 				if (!isset($allLoadedResourceReadSettings[$subAliasFromPartial])) {
-					$error = new Result\Error(Result\Error::InvalidField, 400, "Invalid sub-field '{$subAlias}' specified in '{$alias}' on resource {$resourceName}");
-					return NULL;
+					throw new FREST\Exception(FREST\Exception::InvalidField, "Invalid sub-field '{$subAlias}' specified in '{$alias}' on resource {$resourceName}");
 				}
 
 				$subReadSetting = $allLoadedResourceReadSettings[$subAliasFromPartial];
@@ -236,23 +201,14 @@ abstract class Read extends Request\Request {
 				if ($subReadSetting instanceof Setting\SingularResourceRead || $subReadSetting instanceof Setting\PluralResourceRead) {
 					/** @var Setting\SingularResourceRead|Setting\PluralResourceRead $subReadSetting */
 
-					$subLoadedResource = $this->getLoadedResource($subReadSetting->getResourceName(), NULL, $error);
-					if (isset($error)) {
-						return NULL;
-					}
-
+					$subLoadedResource = $this->getLoadedResource($subReadSetting->getResourceName());
 					$subPartialPrefix = isset($partialPrefix) ? "{$partialPrefix}.{$aliasFromPartial}.{$subAliasFromPartial}" : "{$aliasFromPartial}.{$subAliasFromPartial}";
-
-					$subReadSettings = $this->generateReadSettings($subLoadedResource, array('fields' => implode(',', $deepAliases)), $subPartialPrefix, $error);
-					if (isset($error)) {
-						return NULL;
-					}
+					$subReadSettings = $this->generateReadSettings($subLoadedResource, array('fields' => implode(',', $deepAliases)), $subPartialPrefix);
 
 					$this->partialSubReadSettings[$subPartialPrefix] = $subReadSettings;
 				}
 				else {
-					$error = new Result\Error(Result\Error::PartialSyntaxNotSupported, 400, "The field '{$subAliasFromPartial}' on resource {$resourceName} does not support partial syntax");
-					return NULL;
+					throw new FREST\Exception(FREST\Exception::PartialSyntaxNotSupported, "The field '{$subAliasFromPartial}' on resource {$resourceName} does not support partial syntax");
 				}
 
 				$subAlias = $subAliasFromPartial;
@@ -270,9 +226,9 @@ abstract class Read extends Request\Request {
 	/**
 	 * @param FREST\Resource $resource
 	 * @param array $readSettings
-	 * @param Result\Error $error
+	 * @throws FREST\Exception
 	 */
-	private function addRequiredReadSettings($resource, &$readSettings, &$error = NULL) {
+	private function addRequiredReadSettings($resource, &$readSettings) {
 		$requiredReadSettings = array();
 		$resourceName = get_class($resource);
 		
@@ -298,13 +254,11 @@ abstract class Read extends Request\Request {
 						
 						if (isset($subAliases)) {
 							if (!($requiredReadSetting instanceof Setting\SingularResourceRead)) {
-								$error = new Result\Error(Result\Error::Config, 500, "The required alias '{$requiredAliasFromPartial}' on resource {$resourceName} is not a resource and should contain partial object syntax");
-								return;
+								throw new FREST\Exception(FREST\Exception::Config, "The required alias '{$requiredAliasFromPartial}' on resource {$resourceName} is not a resource and should contain partial object syntax");
 							}
 
-							$loadedResource = $this->getLoadedResource($requiredReadSetting->getResourceName(), NULL, $error);
+							$loadedResource = $this->getLoadedResource($requiredReadSetting->getResourceName());
 
-							//$loadedResourceReadSettings = $this->getLoadedResourceReadSettings($loadedResource, $readSetting, $error);
 							$loadedResourceReadSettings = $loadedResource->getReadSettings();
 							
 							// find read Setting for partial syntax that were defined in required alias config
@@ -323,8 +277,7 @@ abstract class Read extends Request\Request {
 
 				foreach ($injectedRequiredAliases as $injectedAlias) {
 					if (!isset($allReadSettings[$injectedAlias])) {
-						$error = new Result\Error(Result\Error::Config, 500, "Injected alias '{$injectedAlias}' is invalid in resource {$resourceName}");
-						return;
+						throw new FREST\Exception(FREST\Exception::Config, "Injected alias '{$injectedAlias}' is invalid in resource {$resourceName}");
 					}
 
 					if (!isset($readSettings[$injectedAlias]) && !isset($requiredReadSettings[$injectedAlias])) { // if it's not already there
@@ -338,10 +291,7 @@ abstract class Read extends Request\Request {
 		if (count($requiredReadSettings) > 0) {
 			$readSettings = array_merge($readSettings, $requiredReadSettings);
 
-			$this->addRequiredReadSettings($resource, $readSettings, $error);
-			if (isset($error)) {
-				return;
-			}
+			$this->addRequiredReadSettings($resource, $readSettings);
 		}
 	}
 
@@ -350,41 +300,28 @@ abstract class Read extends Request\Request {
 	 * @param array $readSettings
 	 * @param bool $prefixWithTableAbbrv
 	 * @param string $resourceAlias
-	 * @param Result\Error $error
 	 *
 	 * @return array|NULL
 	 */
-	protected function generateFieldSpecs($resource, $readSettings, $prefixWithTableAbbrv = FALSE, $resourceAlias = NULL, &$error = NULL) {
+	protected function generateFieldSpecs($resource, $readSettings, $prefixWithTableAbbrv = FALSE, $resourceAlias = NULL) {
 		$fieldSpecs = array();
 
 		foreach ($readSettings as $readSetting) {
 			if ($readSetting instanceof Setting\SingularResourceRead) {
-				$loadedResource = $this->getLoadedResource($readSetting->getResourceName(), $this, $error);
-				if (isset($error)) {
-					return NULL;
-				}
+				$loadedResource = $this->getLoadedResource($readSetting->getResourceName(), $this);
 
 				$alias = $readSetting->getAlias();
 				$partialKey = isset($resourceAlias) ? "{$resourceAlias}.{$alias}" : $alias;
 				if (isset($this->partialSubReadSettings[$partialKey])) {
 					$subReadSettings = $this->partialSubReadSettings[$partialKey];
-					$this->addRequiredReadSettings($loadedResource, $subReadSettings, $error);
-					if (isset($error)) {
-						return NULL;
-					}
+					$this->addRequiredReadSettings($loadedResource, $subReadSettings);
 				}
 				else {
-					$subReadSettings = $this->getLoadedResourceReadSettings($loadedResource, $readSetting, $error);
-					if (isset($error)) {
-						return NULL;
-					}
+					$subReadSettings = $this->getLoadedResourceReadSettings($loadedResource, $readSetting);
 				}
 								
 				$subResourceAlias = isset($resourceAlias) ? "{$resourceAlias}-{$alias}" : $alias;
-				$subFieldSpecs = $this->generateFieldSpecs($loadedResource, $subReadSettings, TRUE, $subResourceAlias, $error);
-				if (isset($error)) {
-					return NULL;
-				}
+				$subFieldSpecs = $this->generateFieldSpecs($loadedResource, $subReadSettings, TRUE, $subResourceAlias);
 
 				$fieldSpecs = array_merge($fieldSpecs, $subFieldSpecs);
 			}
@@ -425,11 +362,10 @@ abstract class Read extends Request\Request {
 
 	/**
 	 * @param array $fieldSpecs
-	 * @param Result\Error $error
 	 *
 	 * @return string|NULL
 	 */
-	protected function generateFieldString($fieldSpecs, /** @noinspection PhpUnusedParameterInspection */&$error = NULL) {		
+	protected function generateFieldString($fieldSpecs) {		
 		if (!isset($fieldSpecs)) {
 			return NULL;
 		}
@@ -462,66 +398,37 @@ abstract class Read extends Request\Request {
 	 * @param FREST\Resource $resource
 	 * @param array $readSettings
 	 * @param string $resourceAlias
-	 * @param Result\Error $error
 	 *
 	 * @return array|null
+	 * @throws FREST\Exception
 	 */
-	protected function generateJoinSpecs($resource, $readSettings, $resourceAlias = NULL, &$error = NULL) {
+	protected function generateJoinSpecs($resource, $readSettings, $resourceAlias = NULL) {
 		$joinSpecs = array();
 
 		/** @var Setting\SingularResourceRead $readSetting */
 		foreach ($readSettings as $alias=>$readSetting) {
 			if ($readSetting instanceof Setting\SingularResourceRead) {
-				$loadedResource = $this->getLoadedResource($readSetting->getResourceName(), $this, $error);
-				if (isset($error)) {
-					return NULL;
-				}
+				$loadedResource = $this->getLoadedResource($readSetting->getResourceName(), $this);
 
 				$loadedResourceJoinField = $loadedResource->getFieldForAlias($readSetting->getResourceJoinAlias());
 				if (!isset($loadedResourceJoinField)) {
-					$error = new Result\Error(Result\Error::Config, 500, "Field not found in resource '{$readSetting->getResourceName()}' for alias '{$readSetting->getResourceJoinAlias()}'");
-					return NULL;
+					throw new FREST\Exception(FREST\Exception::Config, "Field not found in resource '{$readSetting->getResourceName()}' for alias '{$readSetting->getResourceJoinAlias()}'");
 				}
 				
 				$loadedResourceTable = $loadedResource->getTableForField($loadedResourceJoinField);
 				if (!isset($loadedResourceTable)) {
-					$error = new Result\Error(Result\Error::Config, 500, "Table not found in resource '{$readSetting->getResourceName()}' for alias '{$readSetting->getResourceJoinAlias()}'");
-					return NULL;
+					throw new FREST\Exception(FREST\Exception::Config, "Table not found in resource '{$readSetting->getResourceName()}' for alias '{$readSetting->getResourceJoinAlias()}'");
 				}
-
-				/*
-				if (isset($readSetting[Setting::JOIN_DIRECTION])) {
-					$joinType = strtoupper($readSetting[Setting::JOIN_DIRECTION]);
-
-					if (strcasecmp($joinType, 'LEFT') != 0 && strcasecmp($joinType, 'INNER') != 0 && strcasecmp($joinType, 'RIGHT') != 0) {
-						$error = new Error(Error::APIConfig, "joinDirection for '{$alias}' must be LEFT, INNER, or RIGHT");
-						$this->error(500, $error->getCode(), self::ErrorMessageCommunication, $error->getDescription(TRUE));
-					}
-				}
-				else {
-					$joinType = 'INNER';
-				}
-				*/
 
 				if (isset($this->partialSubReadSettings[$alias])) {
 					$subReadSettings = $this->partialSubReadSettings[$alias];
-					$this->addRequiredReadSettings($loadedResource, $subReadSettings, $error);
-					if (isset($error)) {
-						return NULL;
-					}
+					$this->addRequiredReadSettings($loadedResource, $subReadSettings);
 				}
 				else {
-					$subReadSettings = $this->getLoadedResourceReadSettings($loadedResource, $readSetting, $error);
-					if (isset($error)) {
-						return NULL;
-					}
+					$subReadSettings = $this->getLoadedResourceReadSettings($loadedResource, $readSetting);
 				}
 				
-				
-				$subJoinSpecs = $this->generateJoinSpecs($loadedResource, $subReadSettings, $readSetting->getAlias(), $error);
-				if (isset($error)) {
-					return NULL;
-				}
+				$subJoinSpecs = $this->generateJoinSpecs($loadedResource, $subReadSettings, $readSetting->getAlias());
 				
 				$joinSpec = new Spec\Join(
 					$resourceAlias,
@@ -548,11 +455,10 @@ abstract class Read extends Request\Request {
 	/**
 	 * @param FREST\Resource $resource
 	 * @param array $joinSpecs
-	 * @param Result\Error $error
 	 *
 	 * @return string
 	 */
-	protected function generateJoinString($resource, $joinSpecs, &$error = NULL) {
+	protected function generateJoinString($resource, $joinSpecs) {
 		if (!isset($joinSpecs)) {
 			return '';
 		}
@@ -577,18 +483,12 @@ abstract class Read extends Request\Request {
 
 			$joinsString .= " {$joinType} JOIN {$joinTable} {$joinTableAbbrv} ON {$tableAbbrv}.{$field} = {$joinTableAbbrv}.{$joinField}";
 
-			$loadedResource = $this->getLoadedResource($joinSpec->getResourceName(), $this, $error);
-			if (isset($error)) {
-				return NULL;
-			}
+			$loadedResource = $this->getLoadedResource($joinSpec->getResourceName(), $this);
 
 			$subJoinSpecs = $joinSpec->getSubJoinSpecs();
 
 			if (isset($subJoinSpecs)) {
-				$joinsString .= $this->generateJoinString($loadedResource, $subJoinSpecs, $error);
-				if (isset($error)) {
-					return NULL;
-				}
+				$joinsString .= $this->generateJoinString($loadedResource, $subJoinSpecs);
 			}
 		}
 
@@ -597,11 +497,11 @@ abstract class Read extends Request\Request {
 
 	/**
 	 * @param array $tableSpecs
-	 * @param Result\Error $error
 	 *
 	 * @return string
+	 * @throws FREST\Exception
 	 */
-	protected function generateTableString($tableSpecs, &$error = NULL) {
+	protected function generateTableString($tableSpecs) {
 		if (!isset($tableSpecs)) {
 			return NULL;
 		}
@@ -644,8 +544,7 @@ abstract class Read extends Request\Request {
 				}
 
 				if (!$finished) {
-					$error = new Result\Error(Result\Error::Config, 500, "Could not find correct table-idField combinations to join");
-					return NULL;
+					throw new FREST\Exception(FREST\Exception::Config, "Could not find correct table-idField combinations to join");
 				}
 
 				$tablesToReadJoinString .= " INNER JOIN {$table} {$tableAbbrv} ON {$onString}";
@@ -668,11 +567,10 @@ abstract class Read extends Request\Request {
 	 * @param array $objects
 	 * @param array $readSettings
 	 * @param string $resourceAlias
-	 * @param Result\Error $error
 	 * 
-	 * @return
+	 * @throws FREST\Exception
 	 */
-	protected function parseObjects($resource, &$objects, $readSettings, $resourceAlias = NULL, &$error = NULL) {					
+	protected function parseObjects($resource, &$objects, $readSettings, $resourceAlias = NULL) {					
 		// stores the read Setting that are just an ComputedRead
 		$computedReadSettings = array();
 		
@@ -701,11 +599,8 @@ abstract class Read extends Request\Request {
 				
 				$requiredAliases = $readSetting->getRequiredAliases();
 
-				$loadedResource = $this->getLoadedResource($readSetting->getResourceName(), NULL, $error);
-				if (isset($error)) {
-					return;
-				}
-
+				$loadedResource = $this->getLoadedResource($readSetting->getResourceName());
+				
 				foreach ($objects as &$object) {
 					$requestParameters = array();
 					foreach ($parameters as $field=>$parameter) {
@@ -722,17 +617,10 @@ abstract class Read extends Request\Request {
 					
 					$request = new PluralRead($this->frest, $requestParameters, NULL, $readSetting->getAlias());
 					$request->setWasInternallyLoaded(TRUE);
-					$request->setupWithResource($loadedResource, $error);
-					if (isset($error)) {
-						return;
-					}
+					$request->setupWithResource($loadedResource);
 					
 					/** @var Result\PluralRead $result */
 					$result = $request->generateResult();
-					if ($result instanceof Result\Error) {
-						$error = $result;
-						return;
-					}
 
 					$this->frest->startTimingForLabel(Enum\Timing::POST_PROCESSING, $timerInstance);
 
@@ -742,23 +630,14 @@ abstract class Read extends Request\Request {
 			else if ($readSetting instanceof Setting\SingularResourceRead) {
 				/** @var Setting\SingularResourceRead $readSetting */
 				
-				$loadedResource = $this->getLoadedResource($readSetting->getResourceName(), NULL, $error);
-				if (isset($error)) {
-					return;
-				}
+				$loadedResource = $this->getLoadedResource($readSetting->getResourceName());
 
 				if (isset($this->partialSubReadSettings[$partialSubKey])) {
 					$subReadSettings = $this->partialSubReadSettings[$partialSubKey];
-					$this->addRequiredReadSettings($loadedResource, $subReadSettings, $error);
-					if (isset($error)) {
-						return NULL;
-					}
+					$this->addRequiredReadSettings($loadedResource, $subReadSettings);
 				}
 				else {
-					$subReadSettings = $this->getLoadedResourceReadSettings($loadedResource, $readSetting, $error);
-					if (isset($error)) {
-						return;
-					}
+					$subReadSettings = $this->getLoadedResourceReadSettings($loadedResource, $readSetting);
 				}
 				
 				$subObjects = array();
@@ -786,26 +665,17 @@ abstract class Read extends Request\Request {
 							unset($object->$subProperty);
 						}
 						else if ($subReadSetting instanceof Setting\SingularResourceRead) { // move properties of object that should belong to subObject (only nests once? idk)
-							$subLoadedResource = $this->getLoadedResource($subReadSetting->getResourceName(), NULL, $error);
-							if (isset($error)) {
-								return;
-							}
+							$subLoadedResource = $this->getLoadedResource($subReadSetting->getResourceName());
 
 							$subReadAlias = $subReadSetting->getAlias();
 							$partialDeepKey = isset($resourceAlias) ? "{$resourceAlias}.{$alias}.{$subReadAlias}" : "{$alias}.{$subReadAlias}";
 
 							if (isset($this->partialSubReadSettings[$partialDeepKey])) {
 								$deepReadSettings = $this->partialSubReadSettings[$partialDeepKey];
-								$this->addRequiredReadSettings($subLoadedResource, $deepReadSettings, $error);
-								if (isset($error)) {
-									return NULL;
-								}
+								$this->addRequiredReadSettings($subLoadedResource, $deepReadSettings);
 							}
 							else {
-								$deepReadSettings = $this->getLoadedResourceReadSettings($subLoadedResource, $subReadSetting, $error);
-								if (isset($error)) {
-									return;
-								}
+								$deepReadSettings = $this->getLoadedResourceReadSettings($subLoadedResource, $subReadSetting);
 							}
 							
 
@@ -832,10 +702,7 @@ abstract class Read extends Request\Request {
 				$subAlias = $readSetting->getAlias();
 				$subResourceAlias = isset($resourceAlias) ? "{$resourceAlias}.{$subAlias}" : $subAlias;
 
-				$this->parseObjects($loadedResource, $subObjects, $subReadSettings, $subResourceAlias, $error);
-				if (isset($error)) {
-					return;
-				}
+				$this->parseObjects($loadedResource, $subObjects, $subReadSettings, $subResourceAlias);
 			}
 			else if ($readSetting instanceof Setting\FieldRead) {		
 				/** @var Setting\FieldRead $readSetting */
@@ -850,8 +717,7 @@ abstract class Read extends Request\Request {
 					if (isset($filterFunction)) {
 						if (!method_exists($resource, $filterFunction)) {
 							$resourceClassName = get_class($resource);
-							$error = new Result\Error(Result\Error::FilterFunctionMissing, 500, "Function name: '{$filterFunction}', resource: '{$resourceClassName}'");
-							return;
+							throw new FREST\Exception(FREST\Exception::FilterFunctionMissing, "Function name: '{$filterFunction}', resource: '{$resourceClassName}'");
 						}
 						
 						$value = $resource->$filterFunction($value);
@@ -934,8 +800,7 @@ abstract class Read extends Request\Request {
 				foreach ($objects as &$object) {
 					if (!method_exists($resource, $function)) {
 						$resourceName = get_class($resource);
-						$error = new Result\Error(Result\Error::ComputationFunctionMissing, 500, "The Func '{$function}' is not defined in resource '{$resourceName}'");
-						return;
+						throw new FREST\Exception(FREST\Exception::ComputationFunctionMissing, "The Func '{$function}' is not defined in resource '{$resourceName}'");
 					}
 					
 					$object->$alias = $resource->$function($object);
@@ -953,8 +818,7 @@ abstract class Read extends Request\Request {
 		}
 		
 		if ($failedComputingSettings) {
-			$error = new Result\Error(Result\Error::Config, 500, 'All computed aliases could not be computed. Check your config and make sure there are no conflicting required field Setting');
-			return;
+			throw new FREST\Exception(FREST\Exception::Config, 'All computed aliases could not be computed. Check your config and make sure there are no conflicting required field Setting');
 		}
 		
 		$class = get_class($resource);
@@ -1015,20 +879,16 @@ abstract class Read extends Request\Request {
 	/**
 	 * @param string $resourceName
 	 * @param Request\Read $request
-	 * @param Result\Error $error
 	 *
 	 * @return FREST\Resource
 	 */
-	protected function getLoadedResource($resourceName, $request = NULL, $error = NULL) {
+	protected function getLoadedResource($resourceName, $request = NULL) {
 		if (!isset(self::$loadedResources[$resourceName])) {
 			if (!isset($request)) {
 				$request = $this;
 			}
 
-			$resource = $this->frest->loadResourceWithName($resourceName, $request, $error);
-			if (isset($error)) {
-				return NULL;
-			}
+			$resource = $this->frest->loadResourceWithName($resourceName, $request);
 
 			self::$loadedResources[$resourceName] = $resource;
 		}
@@ -1040,10 +900,9 @@ abstract class Read extends Request\Request {
 	/**
 	 * @param FREST\Resource $resource
 	 * @param array $readSettings
-	 * @param Result\Error $error
 	 * @return array|NULL
 	 */
-	protected function generateTableSpecs($resource, $readSettings, /** @noinspection PhpUnusedParameterInspection */&$error = NULL) {
+	protected function generateTableSpecs($resource, $readSettings) {
 		$tableSpecs = array();
 
 		/** @var Setting\Read $readSetting */
@@ -1120,10 +979,10 @@ abstract class Read extends Request\Request {
 	/**
 	 * @param FREST\Resource $loadedResource
 	 * @param Setting\Read $responsibleReadSetting
-	 * @param Result\Error $error
+	 *
 	 * @return array
 	 */
-	protected function getLoadedResourceReadSettings($loadedResource, $responsibleReadSetting, &$error = NULL) {
+	protected function getLoadedResourceReadSettings($loadedResource, $responsibleReadSetting) {
 		$resourceName = get_class($loadedResource);
 
 		if (!isset($this->loadedResourceReadSettings[$resourceName])) {
@@ -1142,16 +1001,7 @@ abstract class Read extends Request\Request {
 				}
 			}
 
-			$readSettings = $this->generateReadSettings(
-				$loadedResource,
-				$parameters,
-				NULL,
-				$error
-			);
-
-			if (isset($error)) {
-				return NULL;
-			}
+			$readSettings = $this->generateReadSettings($loadedResource, $parameters);
 
 			$this->loadedResourceReadSettings[$resourceName] = $readSettings;
 		}
@@ -1202,28 +1052,24 @@ abstract class Read extends Request\Request {
 	/**
 	 * @param $parameter
 	 * @param $value
-	 * @param $error
+	 * 
 	 * @return bool
+	 * @throws FREST\Exception
 	 */
-	protected function isValidURLParameter($parameter, $value, &$error) {
+	protected function isValidURLParameter($parameter, $value) {
 		/** @noinspection PhpUndefinedClassInspection */
-		$isValid = parent::isValidURLParameter($parameter, $value, $error);
-		if (isset($error)) {
-			return $isValid;
-		}
+		$isValid = parent::isValidURLParameter($parameter, $value);
 		
 		// if not already determined valid
 		if (!$isValid) {
 			if ($parameter == 'fields') {
 				if (!$this->getWasInternallyLoaded()) {
 					if (!$this->resource->getAllowFieldsParameter()) {
-						$error = new Result\Error(Result\Error::FieldsParameterNotAllowed, 400);
-						return FALSE;
+						throw new FREST\Exception(FREST\Exception::FieldsParameterNotAllowed);
 					}
 
 					if (!$this->resource->getAllowPartialSyntax() && (strpos($value, '(') !== FALSE || strpos($value, ')') !== FALSE)) {
-						$error = new Result\Error(Result\Error::PartialSyntaxNotAllowed, 400);
-						return FALSE;
+						throw new FREST\Exception(FREST\Exception::PartialSyntaxNotAllowed);
 					}
 				}
 
@@ -1235,7 +1081,7 @@ abstract class Read extends Request\Request {
 	}
 	
 	/**
-	 * @return FREST\FREST
+	 * @return FREST
 	 */
 	public function getFREST() {
 		return $this->frest;

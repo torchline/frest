@@ -5,7 +5,7 @@
 
 namespace FREST\Result;
 
-use FREST\FREST;
+use FREST;
 use FREST\Enum;
 
 require_once(dirname(__FILE__) . '/../Enum/OutputFormat.php');
