@@ -3,5 +3,8 @@
     "require": {
         "php": ">=5.3.0",
         "torchline/snoauth": "dev-master"
+    },
+    "autoload" : {
+        "psr-0": {"FREST\\": "src/"}
     }
 }
