@@ -7,7 +7,7 @@ namespace FREST;
 
 /**
  * Class Resource
- * @package Router\Resource
+ * @package FREST\Resource
  */
 abstract class Resource {
 	

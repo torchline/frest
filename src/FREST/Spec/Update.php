@@ -7,7 +7,7 @@ namespace FREST\Spec;
 
 /**
  * Class Update
- * @package Router\Spec
+ * @package FREST\Spec
  */
 class Update {
 

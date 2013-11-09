@@ -41,7 +41,7 @@ class Router {
 	 * @param string $resourceName The name of the resource for the request (defaults to base name of request url)
 	 * @param int|string $resourceID The ID of the resource for the request (defaults to base name of request url if it is an int)
 	 * @param array $parameters A list of key-value parameters to pass for the request (defaults to $_GET or $_POST) 
-	 * @param int $requestMethod The method (get, post, put, delete) (e.g. Router\Type\Method) of the request (defaults to REQUEST_METHOD)
+	 * @param int $requestMethod The method (get, post, put, delete) (e.g. FREST\Type\Method) of the request (defaults to REQUEST_METHOD)
 	 * @param string $resourceFunctionName Custom Func to be invoked on resource
 	 */
 	public function __construct($config = NULL, $resourceName = NULL, $resourceID = NULL, $parameters = NULL, $requestMethod = NULL, $resourceFunctionName = NULL) {
@@ -331,8 +331,8 @@ class Router {
 		if (!class_exists($resourceClassName, FALSE)) {
 			throw new Exception(Exception::Config, "Class '{$resourceClassName}' not found in file '{$resourcePath}'");
 		}
-		if (!is_subclass_of($resourceClassName, '\Resource')) {
-			throw new Exception(Exception::Config, "Class '{$resourceClassName}' is not a subclass of \\Router\\Resource");
+		if (!is_subclass_of($resourceClassName, '\FREST\Resource')) {
+			throw new Exception(Exception::Config, "Class '{$resourceClassName}' is not a subclass of \\FREST\\Resource");
 		}
 
 		if (isset($this->loadedResources[$resourceClassName])) {

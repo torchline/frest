@@ -7,7 +7,7 @@ namespace FREST\Spec;
 
 /**
  * Class Table
- * @package Router\Spec
+ * @package FREST\Spec
  */
 class Table {
 

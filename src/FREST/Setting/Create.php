@@ -7,7 +7,7 @@ namespace FREST\Setting;
 
 /**
  * Class Create
- * @package Router\Setting
+ * @package FREST\Setting
  */
 class Create {
 	

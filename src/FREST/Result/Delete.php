@@ -7,7 +7,7 @@ namespace FREST\Result;
 
 /**
  * Class Delete
- * @package Router\Result
+ * @package FREST\Result
  */
 class Delete extends Result {
 

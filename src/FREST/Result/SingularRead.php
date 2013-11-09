@@ -7,7 +7,7 @@ namespace FREST\Result;
 
 /**
  * Class SingularRead
- * @package Router\Result
+ * @package FREST\Result
  */
 class SingularRead extends Result {
 	

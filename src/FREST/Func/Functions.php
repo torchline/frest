@@ -7,7 +7,7 @@ namespace FREST\Func;
 
 /**
  * Class Functions
- * @package Router\Func
+ * @package FREST\Func
  */
 class Functions {
 	/**

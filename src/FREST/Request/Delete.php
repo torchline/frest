@@ -13,7 +13,7 @@ use FREST\Spec;
 
 /**
  * Class Delete
- * @package Router\Request
+ * @package FREST\Request
  */
 class Delete extends Request {
 

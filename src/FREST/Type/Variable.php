@@ -7,7 +7,7 @@ namespace FREST\Type;
 
 /**
  * Class Variable
- * @package Router\Type
+ * @package FREST\Type
  */
 final class Variable {
 	const BOOL = 1;

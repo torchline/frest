@@ -7,7 +7,7 @@ namespace FREST\Type;
 
 /**
  * Class Timing
- * @package Router\Type
+ * @package FREST\Type
  */
 class Timing {
 	const SETUP = 'setup';

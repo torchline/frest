@@ -7,7 +7,7 @@ namespace FREST\Result;
 
 /**
  * Class PluralRead
- * @package Router\Result
+ * @package FREST\Result
  */
 class PluralRead extends Result {
 

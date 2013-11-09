@@ -14,7 +14,7 @@ use FREST\Spec;
 
 /**
  * Class PluralRead
- * @package Router\Request
+ * @package FREST\Request
  */
 class PluralRead extends Read {
 

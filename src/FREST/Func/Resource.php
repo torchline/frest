@@ -7,7 +7,7 @@ namespace FREST\Func;
 
 /**
  * Class Resource
- * @package Router\Func
+ * @package FREST\Func
  */
 class Resource {
 	

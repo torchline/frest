@@ -7,7 +7,7 @@ namespace FREST\Type;
 
 /**
  * Class Filter
- * @package Router\Type
+ * @package FREST\Type
  */
 final class Filter {
 	const SQL_DATE_TO_TIMESTAMP = 'sqlDateToTimestamp';

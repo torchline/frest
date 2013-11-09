@@ -7,7 +7,7 @@ namespace FREST\Setting;
 
 /**
  * Class ComputedRead
- * @package Router\Spec
+ * @package FREST\Spec
  */
 class ComputedRead extends Read {
 

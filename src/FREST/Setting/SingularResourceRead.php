@@ -7,7 +7,7 @@ namespace FREST\Setting;
 
 /**
  * Class SingularResourceRead
- * @package Router\Setting
+ * @package FREST\Setting
  */
 class SingularResourceRead extends Read {
 	

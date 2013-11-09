@@ -7,7 +7,7 @@ namespace FREST\Spec;
 
 /**
  * Class Field
- * @package Router\Spec
+ * @package FREST\Spec
  */
 class Field {
 

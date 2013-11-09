@@ -7,7 +7,7 @@ namespace FREST\Setting;
 
 /**
  * Class FieldRead
- * @package Router\Setting
+ * @package FREST\Setting
  */
 class FieldRead extends Read {
 

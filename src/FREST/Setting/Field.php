@@ -9,7 +9,7 @@ use FREST\Type;
 
 /**
  * Class Field
- * @package Router\Setting
+ * @package FREST\Setting
  */
 class Field {
 

@@ -9,7 +9,7 @@ use FREST\Type;
 
 /**
  * Class Settings
- * @package Router\Setting
+ * @package FREST\Setting
  */
 class Settings {
 	/*** META ***/

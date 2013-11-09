@@ -10,7 +10,7 @@ use FREST\Type;
 
 /**
  * Class Result
- * @package Router\Result
+ * @package FREST\Result
  */
 abstract class Result {
 	

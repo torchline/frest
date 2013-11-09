@@ -7,7 +7,7 @@ namespace FREST\Spec;
 
 /**
  * Class Condition
- * @package Router\Spec
+ * @package FREST\Spec
  */
 class Condition {
 

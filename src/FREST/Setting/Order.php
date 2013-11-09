@@ -7,7 +7,7 @@ namespace FREST\Setting;
 
 /**
  * Class Order
- * @package Router\Setting
+ * @package FREST\Setting
  */
 class Order {
 

@@ -14,7 +14,7 @@ use FREST\Spec;
 
 /**
  * Class Read
- * @package Router\Request
+ * @package FREST\Request
  */
 abstract class Read extends Request\Request {
 	

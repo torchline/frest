@@ -12,7 +12,7 @@ use FREST\Result;
 
 /**
  * Class Request
- * @package Router\Request
+ * @package FREST\Request
  */
 abstract class Request {
 	

@@ -7,7 +7,7 @@ namespace FREST\Spec;
 
 /**
  * Class QueryParameter
- * @package Router\Spec
+ * @package FREST\Spec
  */
 class QueryParameter {
 

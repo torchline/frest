@@ -7,7 +7,7 @@ namespace FREST\Setting;
 
 /**
  * Class Read
- * @package Router\Setting
+ * @package FREST\Setting
  */
 abstract class Read {
 	

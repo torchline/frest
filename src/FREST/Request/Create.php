@@ -13,7 +13,7 @@ use FREST\Spec;
 
 /**
  * Class Create
- * @package Router\Request
+ * @package FREST\Request
  */
 class Create extends Request {
 	

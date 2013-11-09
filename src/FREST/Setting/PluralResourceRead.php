@@ -9,7 +9,7 @@ use FREST\Resource;
 
 /**
  * Class PluralResourceRead
- * @package Router\Setting
+ * @package FREST\Setting
  */
 class PluralResourceRead extends Read {
 

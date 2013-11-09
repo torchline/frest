@@ -7,7 +7,7 @@ namespace FREST\Spec;
 
 /**
  * Class Create
- * @package Router\Spec
+ * @package FREST\Spec
  */
 class Create {
 

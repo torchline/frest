@@ -7,7 +7,7 @@ namespace FREST\Result;
 
 /**
  * Class ResourceFunc
- * @package Router\Result
+ * @package FREST\Result
  */
 class ResourceFunc extends Result {
 

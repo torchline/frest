@@ -7,7 +7,7 @@ namespace FREST\Result;
 
 /**
  * Class Error
- * @package Router\Result
+ * @package FREST\Result
  */
 class Error extends Result {
 

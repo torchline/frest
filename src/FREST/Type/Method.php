@@ -7,7 +7,7 @@ namespace FREST\Type;
 
 /**
  * Class Method
- * @package Router\Type
+ * @package FREST\Type
  */
 final class Method {
 	const GET = 1;

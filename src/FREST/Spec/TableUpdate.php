@@ -7,7 +7,7 @@ namespace FREST\Spec;
 
 /**
  * Class TableUpdate
- * @package Router\Spec
+ * @package FREST\Spec
  */
 class TableUpdate {
 

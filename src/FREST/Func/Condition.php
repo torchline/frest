@@ -9,7 +9,7 @@ use FREST\Type;
 
 /**
  * Class Condition
- * @package Router\Func
+ * @package FREST\Func
  */
 class Condition {
 	

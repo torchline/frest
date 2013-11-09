@@ -7,7 +7,7 @@ namespace FREST\Spec;
 
 /**
  * Class TableDelete
- * @package Router\Spec
+ * @package FREST\Spec
  */
 class TableDelete {
 

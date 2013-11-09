@@ -7,7 +7,7 @@ namespace FREST\Type;
 
 /**
  * Class OutputFormat
- * @package Router\Type
+ * @package FREST\Type
  */
 final class OutputFormat {
 	const JSON = 1;

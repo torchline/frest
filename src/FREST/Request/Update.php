@@ -13,7 +13,7 @@ use FREST\Spec;
 
 /**
  * Class Update
- * @package Router\Request
+ * @package FREST\Request
  */
 class Update extends Request {
 

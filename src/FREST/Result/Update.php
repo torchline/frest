@@ -7,7 +7,7 @@ namespace FREST\Result;
 
 /**
  * Class Update
- * @package Router\Result
+ * @package FREST\Result
  */
 class Update extends Result {
 

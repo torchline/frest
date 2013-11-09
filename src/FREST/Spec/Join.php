@@ -7,7 +7,7 @@ namespace FREST\Spec;
 
 /**
  * Class Join
- * @package Router\Spec
+ * @package FREST\Spec
  */
 class Join {
 	
