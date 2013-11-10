@@ -1,0 +1,14 @@
+{
+    "db" : {
+        "type" : "mysql",
+        "host" : "localhost",
+        "name" : "world",
+        "username" : "root",
+        "password" : "root"
+    },
+    "suppressHTTPStatusCodes" : false,
+    "showDiagnostics" : false,
+    "checkResourceValidity" : true,
+    "enableForcedMethod" : false,
+    "resourceDirectory" : "resources"
+}
