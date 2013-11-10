@@ -97,7 +97,6 @@ abstract class Read extends Request\Request {
 		
 		if (isset($parameters['fields'])) {
 			$userSpecifiedAliases = $this->parseFieldParameterList($parameters['fields']);
-			
 			$hasWildcard = count($userSpecifiedAliases) > 0 && $userSpecifiedAliases[0] == '*'; // must be specified first
 			if ($hasWildcard) { // if wildcard, then all fields
 				$readSettings = $resource->getReadSettings();
@@ -122,7 +121,8 @@ abstract class Read extends Request\Request {
 					$partialReadSetting = $this->generatePartialReadSetting($resource, $alias, $partialPrefix);
 
 					if (isset($partialReadSetting)) {
-						$readSetting[$alias] = $partialReadSetting;
+						$aliasFromPartial = $partialReadSetting->getAlias();
+						$readSettings[$aliasFromPartial] = $partialReadSetting;
 					}
 				}
 			}
@@ -136,10 +136,9 @@ abstract class Read extends Request\Request {
 				}
 			}
 		}
-		
+
 		if (count($readSettings) > 0) {
 			$this->addRequiredReadSettings($resource, $readSettings);
-			
 			return $readSettings;
 		}
 
@@ -424,12 +423,14 @@ abstract class Read extends Request\Request {
 				
 				$subJoinSpecs = $this->generateJoinSpecs($loadedResource, $subReadSettings, $readSetting->getAlias());
 				
+				$field = $resource->getFieldForAlias($alias);
+
 				$joinSpec = new Spec\Join(
 					$resourceAlias,
 					$readSetting->getResourceName(),
 					$loadedResourceTable,
 					$loadedResourceJoinField,
-					$resource->getFieldForAlias($alias),
+					$field,
 					$alias,
 					'INNER',
 					$subJoinSpecs
