@@ -331,8 +331,10 @@ class Router {
 		if (!class_exists($resourceClassName, FALSE)) {
 			throw new Exception(Exception::Config, "Class '{$resourceClassName}' not found in file '{$resourcePath}'");
 		}
-		if (!is_subclass_of($resourceClassName, '\FREST\Resource')) {
-			throw new Exception(Exception::Config, "Class '{$resourceClassName}' is not a subclass of \\FREST\\Resource");
+		
+		$frestResourceClassName = '\FREST\Resource';
+		if (!is_subclass_of($resourceClassName, $frestResourceClassName)) {
+			throw new Exception(Exception::Config, "Class '{$resourceClassName}' is not a subclass of {$frestResourceClassName}");
 		}
 
 		if (isset($this->loadedResources[$resourceClassName])) {
@@ -340,13 +342,15 @@ class Router {
 			$resource = $this->loadedResources[$resourceClassName];
 		}
 		else {
-			/** @var Resource $resource */
+			/** @var \FREST\Resource $resource */
 			$resource = new $resourceClassName($this);
 			$resource->setDefaultLimit($this->config->getDefaultLimit());
 			$resource->setMaxLimit($this->config->getMaxLimit());
 			$resource->setAllowWildcards($this->config->getAllowWildcards());
 			$resource->setAllowFieldsParameter($this->config->getAllowFieldsParameter());
 			$resource->setAllowPartialSyntax($this->config->getAllowPartialSyntax());
+			
+			$resource->setup(); // this is where Settings are created by custom class
 			
 			$this->loadedResources[$resourceClassName] = $resource;
 		}

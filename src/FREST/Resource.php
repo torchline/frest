@@ -200,7 +200,6 @@ abstract class Resource {
 	 */
 	public function __construct($frest) {
 		$this->frest = $frest;
-		$this->setup();
 	}
 
 

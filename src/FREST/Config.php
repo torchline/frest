@@ -118,6 +118,10 @@ class Config {
 	 */
 	protected $configArray;
 
+	/** @var array */
+	protected static $configKeys = array(
+		
+	);
 	
 	
 	/**
@@ -140,25 +144,34 @@ class Config {
 	 * @param Router $frest
 	 * @param string $path
 	 * @return Config
-	 * @throws \Exception
+	 * @throws Exception
 	 */
-	public static function fromFile($frest, $path = 'frest-config.php') {
+	public static function fromFile($frest, $path = 'frest-config.json') {
 		$frest->startTimingForLabel(Type\Timing::SETUP, 'config');
 		
-		if (!file_exists($path)) {
-			throw new \Exception("No frest config file at '{$path}'", 500);
+		$searchPath = $path;
+		$numDirsUp = 0;
+		$fileExists = file_exists($searchPath);
+		// search for config file starting in current directory, going up to a possible of 3 directories
+		while (!$fileExists && $numDirsUp <= 3) {
+			$searchPath = '../' . $searchPath;
+			$fileExists = file_exists($searchPath);
+			$numDirsUp++;
 		}
 
-		/** @noinspection PhpIncludeInspection */
-		include($path);
-						
-		if (!isset($config)) {
-			throw new \Exception("No config variable found in frest config file at '{$path}'", 500);
+		if (!$fileExists) {
+			throw new Exception(Exception::Config, "No config file found with name '{$path}'");
+		}
+		
+		$jsonConfigString = file_get_contents($searchPath);
+		$config = json_decode($jsonConfigString, TRUE);
+		if (json_last_error() !== JSON_ERROR_NONE) {
+			throw new Exception(Exception::Config, "Config file is not valid json");
 		}
 		
 		// PDO
 		if (!isset($config['db'])) {
-			throw new \Exception("No db config Setting specified in frest config file at '{$path}'", 500);
+			throw new Exception(Exception::Config, "No db config settings specified in frest config file at '{$path}'");
 		}
 
 		// create Config
@@ -229,6 +242,9 @@ class Config {
 			if (isset($this->configArray['authDB'])) {
 				$authPDO = self::pdoFromConfigArray($this->configArray['authDB']);
 				$this->setAuthPDO($authPDO);
+			}
+			else if (isset($this->pdo)) {
+				$this->setAuthPDO($this->pdo);
 			}
 		}
 		
@@ -372,10 +388,6 @@ class Config {
 	 */
 	public function setPDO($pdo) {
 		$this->pdo = $pdo;
-		
-		if (!isset($this->authPDO)) {
-			$this->authPDO = $pdo;
-		}
 	}
 
 	/**

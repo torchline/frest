@@ -4,6 +4,9 @@
         "php": ">=5.3.0",
         "torchline/snoauth": "dev-master"
     },
+    "require-dev" : {
+        "phpunit/phpunit": "3.7.*"
+    },
     "autoload" : {
         "psr-0": {"FREST\\": "src/"}
     }
