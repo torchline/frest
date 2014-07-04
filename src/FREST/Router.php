@@ -49,7 +49,7 @@ class Router {
 			$this->startTimingForLabel(Type\Timing::TOTAL, 'frest');
 
 			if (!isset($config)) {
-				$config = Config::fromFile($this);
+				$config = Config::fromFile();
 
 				if (!isset($config)) {
 					throw new Exception(Exception::Config, "No config file or object supplied to Router");

@@ -141,14 +141,11 @@ class Config {
 	}
 
 	/**
-	 * @param Router $frest
 	 * @param string $path
 	 * @return Config
 	 * @throws Exception
 	 */
-	public static function fromFile($frest, $path = 'frest-config.json') {
-		$frest->startTimingForLabel(Type\Timing::SETUP, 'config');
-		
+	public static function fromFile($path = 'frest-config.json') {		
 		$searchPath = $path;
 		$numDirsUp = 0;
 		$fileExists = file_exists($searchPath);
@@ -177,8 +174,6 @@ class Config {
 		// create Config
 		$frestConfig = new Config();
 		$frestConfig->setConfigArray($config);
-
-		$frest->stopTimingForLabel(Type\Timing::SETUP, 'config');
 
 		return $frestConfig;
 	}
