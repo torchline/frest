@@ -1,0 +1,14 @@
+{
+    "db" : {
+        "type" : "test-type",
+        "host" : "test-host",
+        "name" : "test-name",
+        "username" : "test-username",
+        "password" : "test-password"
+    },
+    "suppressHTTPStatusCodes" : false,
+    "showDiagnostics" : true,
+    "checkResourceValidity" : true,
+    "enableForcedMethod" : false,
+    "resourceDirectory" : "test-resource-directory"
+}

@@ -1,0 +1,7 @@
+{
+    "suppressHTTPStatusCodes" : false,
+    "showDiagnostics" : true,
+    "checkResourceValidity" : true,
+    "enableForcedMethod" : false,
+    "resourceDirectory" : "yo-mama"
+}
