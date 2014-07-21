@@ -164,8 +164,7 @@ class Update extends Request {
 				$conditionFunction = $updateSetting->getConditionFunction();
 				if (isset($conditionFunction)) {
 					if (!method_exists($resource, $conditionFunction)) {
-						$resourceClassName = get_class($resource);
-						throw new FREST\Exception(FREST\Exception::ConditionFunctionMissing, "Function name: '{$conditionFunction}', resource: '{$resourceClassName}'");
+						throw new FREST\Exception(FREST\Exception::ConditionFunctionMissing, "Function name: '{$conditionFunction}', resource: '{$resource->getName()}'");
 					}
 
 					$isValueValid = $resource->$conditionFunction($castedValue);
@@ -178,8 +177,7 @@ class Update extends Request {
 				$filterFunction = $updateSetting->getFilterFunction();
 				if (isset($filterFunction)) {
 					if (!method_exists($resource, $filterFunction)) {
-						$resourceClassName = get_class($resource);
-						throw new FREST\Exception(FREST\Exception::FilterFunctionMissing, "Function name: '{$filterFunction}', resource: '{$resourceClassName}'");
+						throw new FREST\Exception(FREST\Exception::FilterFunctionMissing, "Function name: '{$filterFunction}', resource: '{$resource->getName()}'");
 					}
 
 					$castedValue = $resource->$filterFunction($castedValue);
@@ -272,8 +270,7 @@ class Update extends Request {
 
 				$fieldSetting = $this->resource->getFieldSettingForAlias($updateSetting->getAlias());
 				if (!isset($fieldSetting)) {
-					$resourceName = get_class($this->resource);
-					throw new FREST\Exception(FREST\Exception::Config, "No field setting found for condition '{$parameter}' in resource {$resourceName}");
+					throw new FREST\Exception(FREST\Exception::Config, "No field setting found for condition '{$parameter}' in resource {$this->resource->getName()}");
 				}
 
 				$isValid = TRUE;

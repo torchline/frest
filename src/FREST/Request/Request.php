@@ -196,8 +196,7 @@ abstract class Request {
 
 		// Check for Func implementation existence
 		if (!method_exists($this->resource, $this->resourceFunctionName)) {
-			$resourceName = get_class($this->resource);
-			throw new FREST\Exception(FREST\Exception::ResourceFunctionMissing, "Function name: '{$this->resourceFunctionName}', resource: '{$resourceName}'");
+			throw new FREST\Exception(FREST\Exception::ResourceFunctionMissing, "Function name: '{$this->resourceFunctionName}', resource: '{$this->resource->getName()}'");
 		}
 
 		if ($resourceFunction->getRequiresResourceID()) {

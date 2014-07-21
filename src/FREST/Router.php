@@ -318,7 +318,7 @@ class Router {
 	public function loadResourceWithName($resourceName, $request = NULL) {
 		$formattedResourceName = ucfirst($resourceName);
 			
-		if (!isset($this->loadedResources[$formattedResourceName])) {
+		if (!isset($this->loadedResources[$resourceName])) {
 			$resourceDir = $this->config->getResourceDirectory();
 
 			$jsonPath = "{$resourceDir}/{$formattedResourceName}.json";
@@ -326,10 +326,10 @@ class Router {
 			
 			// verify resource existence
 			if (file_exists($jsonPath)) {
-				$jsonResource = new JSONResource($this, $jsonPath);
+				$jsonResource = new JSONResource($this, $resourceName, $jsonPath);
 				$this->setupResource($jsonResource);
 				
-				$this->loadedResources[$formattedResourceName] = $jsonResource;
+				$this->loadedResources[$resourceName] = $jsonResource;
 			}
 			else if (file_exists($classPath)){
 				// load the class, check if failed
@@ -346,10 +346,10 @@ class Router {
 				}
 
 				/** @var \FREST\Resource $resource */
-				$classResource = new $formattedResourceName($this);
+				$classResource = new $formattedResourceName($this, $resourceName);
 				$this->setupResource($classResource);
 				
-				$this->loadedResources[$formattedResourceName] = $classResource;
+				$this->loadedResources[$resourceName] = $classResource;
 			}
 			else {
 				throw new Exception(Exception::Config, "File for resource '{$resourceName}' not found in directory '{$resourceDir}'");
@@ -357,7 +357,7 @@ class Router {
 		}
 
 		/** @var Resource $resource */
-		$resource = $this->loadedResources[$formattedResourceName];
+		$resource = $this->loadedResources[$resourceName];
 		
 		if (isset($request) && method_exists($resource, 'isAuthRequiredForRequest')) {
 			$scopes = NULL; // TODO: get scopes

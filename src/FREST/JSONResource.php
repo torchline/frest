@@ -18,11 +18,12 @@ class JSONResource extends Resource {
 	
 	/**
 	 * @param Router $router
+	 * @param string $name
 	 * @param string $filePath
 	 */
-	public function __construct($router, $filePath) {
+	public function __construct($router, $name, $filePath) {
 		$this->filePath = $filePath;
-		parent::__construct($router);
+		parent::__construct($router, $name);
 	}
 	
 	public function setup() {

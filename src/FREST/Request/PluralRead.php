@@ -567,8 +567,7 @@ class PluralRead extends Read {
 				
 				$fieldSetting = $this->resource->getFieldSettingForAlias($conditionSetting->getAlias());
 				if (!isset($fieldSetting)) {
-					$resourceName = get_class($this->resource);
-					throw new FREST\Exception(FREST\Exception::Config, "No field setting found for condition '{$parameter}' in resource {$resourceName}");
+					throw new FREST\Exception(FREST\Exception::Config, "No field setting found for condition '{$parameter}' in resource {$this->resource->getName()}");
 				}
 
 				$isValid = TRUE;

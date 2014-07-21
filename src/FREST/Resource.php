@@ -192,14 +192,21 @@ abstract class Resource {
 	 * @var Router
 	 */
 	private $frest;
+
+	/**
+	 * @var string
+	 */
+	private $name;
 	
 
 	/**
 	 * This is where all configuration of the subclass resource should be defined. 
 	 * @param Router $frest
+	 * @param string $name
 	 */
-	public function __construct($frest) {
+	public function __construct($frest, $name) {
 		$this->frest = $frest;
+		$this->name = $name;
 	}
 
 
@@ -813,6 +820,7 @@ abstract class Resource {
 
 		$this->updateSettings = $keyedSettings;
 	}
+	
 
 	/**
 	 * @return mixed
@@ -844,6 +852,14 @@ abstract class Resource {
 	public function getFREST()
 	{
 		return $this->frest;
+	}
+
+	/**
+	 * @return string
+	 */
+	public function getName()
+	{
+		return $this->name;
 	}
 
 	/**

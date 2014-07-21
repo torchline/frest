@@ -161,13 +161,11 @@ abstract class Read extends Request\Request {
 	 * @throws FREST\Exception
 	 */
 	private function generatePartialReadSetting($resource, $alias, $partialPrefix = NULL) {
-		$resourceName = get_class($resource);
-		
 		// check for Setting for partial object alias
 		$aliasFromPartial = $this->parsePartialAliasFromString($alias, $definedSubAliases);
 
 		if (!isset($aliasFromPartial)) {
-			throw new FREST\Exception(FREST\Exception::InvalidField, "Invalid field name specified in 'fields' parameter: '{$alias}' on resource {$resourceName}");
+			throw new FREST\Exception(FREST\Exception::InvalidField, "Invalid field name specified in 'fields' parameter: '{$alias}' on resource {$resource->getName()}");
 		}
 
 		$allReadSettings = $resource->getReadSettings();
@@ -176,11 +174,11 @@ abstract class Read extends Request\Request {
 		$readSetting = $allReadSettings[$aliasFromPartial];
 
 		if (!isset($readSetting)) {
-			throw new FREST\Exception(FREST\Exception::InvalidField, "Invalid field name specified in 'fields' parameter using partial syntax: '{$aliasFromPartial}' on resource {$resourceName}");
+			throw new FREST\Exception(FREST\Exception::InvalidField, "Invalid field name specified in 'fields' parameter using partial syntax: '{$aliasFromPartial}' on resource {$resource->getName()}");
 		}
 
 		if (!($readSetting instanceof Setting\SingularResourceRead) && !($readSetting instanceof Setting\PluralResourceRead)) {
-			throw new FREST\Exception(FREST\Exception::PartialSyntaxNotSupported, "The field '{$aliasFromPartial}' on resource {$resourceName} does not respond to partial object syntax");
+			throw new FREST\Exception(FREST\Exception::PartialSyntaxNotSupported, "The field '{$aliasFromPartial}' on resource {$resource->getName()} does not respond to partial object syntax");
 		}
 
 		// load external resource referenced by this resource
@@ -195,7 +193,7 @@ abstract class Read extends Request\Request {
 					$subAliasFromPartial = $this->parsePartialAliasFromString($subAlias, $deepAliases);
 
 					if (!isset($allLoadedResourceReadSettings[$subAliasFromPartial])) {
-						throw new FREST\Exception(FREST\Exception::InvalidField, "Invalid sub-field '{$subAlias}' specified in '{$alias}' on resource {$resourceName}");
+						throw new FREST\Exception(FREST\Exception::InvalidField, "Invalid sub-field '{$subAlias}' specified in '{$alias}' on resource {$resource->getName()}");
 					}
 
 					$subReadSetting = $allLoadedResourceReadSettings[$subAliasFromPartial];
@@ -210,7 +208,7 @@ abstract class Read extends Request\Request {
 						$this->partialSubReadSettings[$subPartialPrefix] = $subReadSettings;
 					}
 					else {
-						throw new FREST\Exception(FREST\Exception::PartialSyntaxNotSupported, "The field '{$subAliasFromPartial}' on resource {$resourceName} does not support partial syntax");
+						throw new FREST\Exception(FREST\Exception::PartialSyntaxNotSupported, "The field '{$subAliasFromPartial}' on resource {$resource->getName()} does not support partial syntax");
 					}
 
 					$subAlias = $subAliasFromPartial;
@@ -233,7 +231,7 @@ abstract class Read extends Request\Request {
 	 */
 	private function addRequiredReadSettings($resource, &$readSettings) {
 		$requiredReadSettings = array();
-		$resourceName = get_class($resource);
+		$resourceName = $resource->getName();
 		
 		$allReadSettings = $resource->getReadSettings();
 		
@@ -736,8 +734,7 @@ abstract class Read extends Request\Request {
 						$filterFunction = $readSetting->getFilterFunction();
 						if (isset($filterFunction)) {
 							if (!method_exists($resource, $filterFunction)) {
-								$resourceClassName = get_class($resource);
-								throw new FREST\Exception(FREST\Exception::FilterFunctionMissing, "Function name: '{$filterFunction}', resource: '{$resourceClassName}'");
+								throw new FREST\Exception(FREST\Exception::FilterFunctionMissing, "Function name: '{$filterFunction}', resource: '{$resource->getName()}'");
 							}
 							
 							$value = $resource->$filterFunction($value);
@@ -820,8 +817,7 @@ abstract class Read extends Request\Request {
 				
 				foreach ($objects as &$object) {
 					if (!method_exists($resource, $function)) {
-						$resourceName = get_class($resource);
-						throw new FREST\Exception(FREST\Exception::ComputationFunctionMissing, "The Func '{$function}' is not defined in resource '{$resourceName}'");
+						throw new FREST\Exception(FREST\Exception::ComputationFunctionMissing, "The Func '{$function}' is not defined in resource '{$resource->getName()}'");
 					}
 					
 					$object->$alias = $resource->$function($object);
@@ -842,14 +838,14 @@ abstract class Read extends Request\Request {
 			throw new FREST\Exception(FREST\Exception::Config, 'All computed aliases could not be computed. Check your config and make sure there are no conflicting required field Setting');
 		}
 		
-		$class = get_class($resource);
+		$resourceName = $resource->getName();
 
 		if (isset($readSettings)) {
 			foreach ($readSettings as $readSetting) {
 				$alias = $readSetting->getAlias();
 
 				// remove property if added only by requirement of other properties
-				if (isset($this->requiredAliasesAdded[$class][$alias])) {
+				if (isset($this->requiredAliasesAdded[$resourceName][$alias])) {
 					foreach ($objects as &$object) {
 						unset($object->$alias);
 					}
@@ -1006,7 +1002,7 @@ abstract class Read extends Request\Request {
 	 * @return array
 	 */
 	protected function getLoadedResourceReadSettings($loadedResource, $responsibleReadSetting) {
-		$resourceName = get_class($loadedResource);
+		$resourceName = $loadedResource->getName();
 
 		if (!isset($this->loadedResourceReadSettings[$resourceName])) {
 			$parameters = array();

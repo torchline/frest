@@ -1,0 +1,75 @@
+{
+    "table" : "country",
+    "resource" : {
+        "code" : {
+            "field" : "Code",
+            "type" : "string",
+            "access" : {
+                "read" : {
+                    "default" : true,
+                    "filter" : null,
+                    "order" : {
+                        "ascending" : true,
+                        "descending" : true
+                    },
+                    "condition" : {}
+                },
+                "create" : {
+                    "required" : false,
+                    "condition" : null,
+                    "filter" : null
+                },
+                "update" : {
+                    "condition" : null,
+                    "filter" : null
+                }               
+            }
+        },
+        "name" : {
+            "field" : "Name",
+            "type" : "string"
+        },
+        "continent" : {
+            "field" : "Continent",
+            "type" : "string"
+        },
+        "region" : {
+            "field" : "Region",
+            "type" : "string"
+        },
+        "surface_area" : {
+            "field" : "SurfaceArea",
+            "type" : "int"
+        },
+        "independence" : {
+            "field" : "IndepYear",
+            "type" : "int"
+        },
+        "population" : {
+            "field" : "Population",
+            "type" : "int"
+        },
+        "life_expectancy" : {
+            "field" : "LifeExpectancy",
+            "type" : "float"
+        },
+        "capital" : {
+            "field" : "Capital",
+            "type" : "int",
+            "resource" : {
+                "name" : "Cities",
+                "reference" : "id",
+                "fields" : ["name", "population"]
+            }
+        },
+        "languages" : {
+            "resources" : {
+                "name" : "Languages",
+                "parameters" : {
+                    "country" : "${code}",
+                    "percent" : "gt(10)"
+                }
+            }
+        }
+    }
+}
