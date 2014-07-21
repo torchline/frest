@@ -124,7 +124,7 @@ class PluralRead extends Read {
 		}
 
 		if (!$resultsStmt->execute()) {
-			throw new FREST\Exception(FREST\Exception::SQLError, 'Error querying database for Result');
+			throw new FREST\Exception(FREST\Exception::SQLError, 'Error querying database for Result: ');
 		}
 
 		$objects = $resultsStmt->fetchAll(\PDO::FETCH_OBJ);

@@ -32,6 +32,29 @@ class Order {
 		$this->descendingEnabled = $descendingEnabled;
 	}
 
+	/**
+	 * @param string $alias
+	 * @param mixed $setting
+	 * @return Condition|NULL
+	 */
+	public static function fromJSONAliasSetting($alias, $setting) {
+		$orderSetting = NULL;
+
+		if (isset($setting['access']['read']['condition'])) {
+			$orderAccess = $setting['access']['read']['condition'];
+
+			$ascending = isset($orderAccess['ascending']) ? (bool)$orderAccess['ascending'] : TRUE;
+			$descending = isset($orderAccess['descending']) ? (bool)$orderAccess['descending'] : TRUE;
+
+			$orderSetting = new Order($alias, $ascending, $descending);
+		}
+		else {
+			$orderSetting = new Order($alias, TRUE, TRUE);
+		}
+
+		return $orderSetting;
+	}
+
 
 	/**
 	 * @return string

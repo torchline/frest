@@ -316,45 +316,49 @@ class Router {
 	 * @throws Exception
 	 */
 	public function loadResourceWithName($resourceName, $request = NULL) {
-		$resourceClassName = ucfirst($resourceName);
-		$resourcePath = "{$this->config->getResourceDirectory()}/{$resourceClassName}.php";
-
-		// verify resource existence
-		if (!file_exists($resourcePath)) {
-			throw new Exception(Exception::Config, "File for resource '{$resourceName}' not found at '{$resourcePath}'");
-		}
-
-		// load the class, check if failed
-		/** @noinspection PhpIncludeInspection */
-		require_once $resourcePath;
-		
-		if (!class_exists($resourceClassName, FALSE)) {
-			throw new Exception(Exception::Config, "Class '{$resourceClassName}' not found in file '{$resourcePath}'");
-		}
-		
-		$frestResourceClassName = '\FREST\Resource';
-		if (!is_subclass_of($resourceClassName, $frestResourceClassName)) {
-			throw new Exception(Exception::Config, "Class '{$resourceClassName}' is not a subclass of {$frestResourceClassName}");
-		}
-
-		if (isset($this->loadedResources[$resourceClassName])) {
-			/** @var Resource $resource */
-			$resource = $this->loadedResources[$resourceClassName];
-		}
-		else {
-			/** @var \FREST\Resource $resource */
-			$resource = new $resourceClassName($this);
-			$resource->setDefaultLimit($this->config->getDefaultLimit());
-			$resource->setMaxLimit($this->config->getMaxLimit());
-			$resource->setAllowWildcards($this->config->getAllowWildcards());
-			$resource->setAllowFieldsParameter($this->config->getAllowFieldsParameter());
-			$resource->setAllowPartialSyntax($this->config->getAllowPartialSyntax());
+		$formattedResourceName = ucfirst($resourceName);
 			
-			$resource->setup(); // this is where Settings are created by custom class
+		if (!isset($this->loadedResources[$formattedResourceName])) {
+			$resourceDir = $this->config->getResourceDirectory();
+
+			$jsonPath = "{$resourceDir}/{$formattedResourceName}.json";
+			$classPath = "{$resourceDir}/{$formattedResourceName}.php";
 			
-			$this->loadedResources[$resourceClassName] = $resource;
+			// verify resource existence
+			if (file_exists($jsonPath)) {
+				$jsonResource = new JSONResource($this, $jsonPath);
+				$this->setupResource($jsonResource);
+				
+				$this->loadedResources[$formattedResourceName] = $jsonResource;
+			}
+			else if (file_exists($classPath)){
+				// load the class, check if failed
+				/** @noinspection PhpIncludeInspection */
+				require_once $classPath;
+
+				if (!class_exists($formattedResourceName, FALSE)) {
+					throw new Exception(Exception::Config, "Class '{$formattedResourceName}' not found in file '{$classPath}'");
+				}
+
+				$frestResourceClassName = '\FREST\Resource';
+				if (!is_subclass_of($formattedResourceName, $frestResourceClassName)) {
+					throw new Exception(Exception::Config, "Class '{$formattedResourceName}' is not a subclass of {$frestResourceClassName}");
+				}
+
+				/** @var \FREST\Resource $resource */
+				$classResource = new $formattedResourceName($this);
+				$this->setupResource($classResource);
+				
+				$this->loadedResources[$formattedResourceName] = $classResource;
+			}
+			else {
+				throw new Exception(Exception::Config, "File for resource '{$resourceName}' not found in directory '{$resourceDir}'");
+			}
 		}
 
+		/** @var Resource $resource */
+		$resource = $this->loadedResources[$formattedResourceName];
+		
 		if (isset($request) && method_exists($resource, 'isAuthRequiredForRequest')) {
 			$scopes = NULL; // TODO: get scopes
 			
@@ -374,6 +378,19 @@ class Router {
 		}
 		
 		return $resource;
+	}
+
+	/**
+	 * @param \FREST\Resource $resource
+	 */
+	private function setupResource($resource) {
+		$resource->setDefaultLimit($this->config->getDefaultLimit());
+		$resource->setMaxLimit($this->config->getMaxLimit());
+		$resource->setAllowWildcards($this->config->getAllowWildcards());
+		$resource->setAllowFieldsParameter($this->config->getAllowFieldsParameter());
+		$resource->setAllowPartialSyntax($this->config->getAllowPartialSyntax());
+		
+		$resource->setup(); // this is where Settings are created by custom class
 	}
 
 	/**

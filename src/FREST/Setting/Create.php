@@ -37,6 +37,29 @@ class Create {
 		$this->filterFunction = $filterFunction;
 	}
 
+	/**
+	 * @param string $alias
+	 * @param mixed $setting
+	 * @return Create|NULL
+	 */
+	public static function fromJSONAliasSetting($alias, $setting) {
+		$createSetting = NULL;
+
+		if (isset($setting['access']['create'])) {
+			$createAccess = $setting['access']['create'];
+
+			$required = isset($readAccess['required']) ? (bool)$readAccess['required'] : TRUE;
+			$conditionFunction = isset($createAccess['condition']) && strlen($createAccess['condition']) > 0 ? $createAccess['condition'] : NULL;
+			$filterFunction = strlen($createAccess['filter']) > 0 ? $createAccess['filter'] : NULL;
+
+			$createSetting = new Create($alias, $required, $conditionFunction, $filterFunction);
+		}
+		else {
+			$createSetting = new Create($alias, FALSE, NULL, NULL);
+		}
+
+		return $createSetting;
+	}
 	
 	/**
 	 * @return string

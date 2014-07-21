@@ -31,6 +31,29 @@ class Update {
 		$this->conditionFunction = $conditionFunction;
 		$this->filterFunction = $filterFunction;
 	}
+
+	/**
+	 * @param string $alias
+	 * @param mixed $json
+	 * @return Update|NULL
+	 */
+	public static function fromJSONAliasSetting($alias, $json) {
+		$updateSetting = NULL;
+
+		if (isset($json['access']['update'])) {
+			$updateAccess = $json['access']['update'];
+
+			$conditionFunction = isset($updateAccess['condition']) && strlen($updateAccess['condition']) > 0 ? $updateAccess['condition'] : NULL;
+			$filterFunction = isset($updateAccess['filter']) && strlen($updateAccess['filter']) > 0 ? $updateAccess['filter'] : NULL;
+
+			$updateSetting = new Update($alias, $conditionFunction, $filterFunction);
+		}
+		else {
+			$updateSetting = new Update($alias, NULL, NULL);
+		}
+		
+		return $updateSetting;
+	}
 	
 
 	/**

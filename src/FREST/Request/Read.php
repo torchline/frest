@@ -97,35 +97,43 @@ abstract class Read extends Request\Request {
 		
 		if (isset($parameters['fields'])) {
 			$userSpecifiedAliases = $this->parseFieldParameterList($parameters['fields']);
-			$hasWildcard = count($userSpecifiedAliases) > 0 && $userSpecifiedAliases[0] == '*'; // must be specified first
-			if ($hasWildcard) { // if wildcard, then all fields
-				$readSettings = $resource->getReadSettings();
-				unset($userSpecifiedAliases[0]); // if other fields specified after wildcard, then allow them if partial
-			}
 			
-			foreach ($userSpecifiedAliases as $alias) {
-				if ($alias == '*') {
-					throw new FREST\Exception(FREST\Exception::InvalidUsage, "Wildcard field parameter must be specified before any others (for readability).");
+			if (isset($userSpecifiedAliases)) {
+				$hasWildcard = count($userSpecifiedAliases) > 0 && $userSpecifiedAliases[0] == '*'; // must be specified first
+				if ($hasWildcard) { // if wildcard, then all fields
+					$readSettings = $resource->getReadSettings();
+					unset($userSpecifiedAliases[0]); // if other fields specified after wildcard, then allow them if partial
 				}
-				
-				$readSetting = isset($allReadSettings[$alias]) ? $allReadSettings[$alias] : NULL;
+				static $borg = 0;
+				$borg++;
+				if ($borg > 1) {
+					echo '<pre>'; var_dump($userSpecifiedAliases); die();
+				}
 
-				if (isset($readSetting)) {
-					if ($hasWildcard) {
-						throw new FREST\Exception(FREST\Exception::InvalidUsage, "Fields specified after a wildcard that do not contain partial syntax are unnecessary");
+				foreach ($userSpecifiedAliases as $alias) {
+					if ($alias == '*') {
+						throw new FREST\Exception(FREST\Exception::InvalidUsage, "Wildcard field parameter must be specified before any others (for readability).");
 					}
-					
-					$readSettings[$alias] = $readSetting;
-				}
-				else {
-					$partialReadSetting = $this->generatePartialReadSetting($resource, $alias, $partialPrefix);
 
-					if (isset($partialReadSetting)) {
-						$aliasFromPartial = $partialReadSetting->getAlias();
-						$readSettings[$aliasFromPartial] = $partialReadSetting;
+					$readSetting = isset($allReadSettings[$alias]) ? $allReadSettings[$alias] : NULL;
+
+					if (isset($readSetting)) {
+						if ($hasWildcard) {
+							throw new FREST\Exception(FREST\Exception::InvalidUsage, "Fields specified after a wildcard that do not contain partial syntax are unnecessary");
+						}
+
+						$readSettings[$alias] = $readSetting;
+					}
+					else {
+						$partialReadSetting = $this->generatePartialReadSetting($resource, $alias, $partialPrefix);
+
+						if (isset($partialReadSetting)) {
+							$aliasFromPartial = $partialReadSetting->getAlias();
+							$readSettings[$aliasFromPartial] = $partialReadSetting;
+						}
 					}
 				}
-			}
+			}			
 		}
 		else {
 			// gather all aliases set to be read by default if none are specified by the client
@@ -181,34 +189,36 @@ abstract class Read extends Request\Request {
 		$loadedResourceReadSettings = array();
 
 		// check if the referenced resource has all partial fields specified
-		foreach ($definedSubAliases as $subAlias) {
-			if (!isset($allLoadedResourceReadSettings[$subAlias])) {
-				$subAliasFromPartial = $this->parsePartialAliasFromString($subAlias, $deepAliases);
+		if (isset($definedSubAliases)) {
+			foreach ($definedSubAliases as $subAlias) {
+				if (!isset($allLoadedResourceReadSettings[$subAlias])) {
+					$subAliasFromPartial = $this->parsePartialAliasFromString($subAlias, $deepAliases);
 
-				if (!isset($allLoadedResourceReadSettings[$subAliasFromPartial])) {
-					throw new FREST\Exception(FREST\Exception::InvalidField, "Invalid sub-field '{$subAlias}' specified in '{$alias}' on resource {$resourceName}");
+					if (!isset($allLoadedResourceReadSettings[$subAliasFromPartial])) {
+						throw new FREST\Exception(FREST\Exception::InvalidField, "Invalid sub-field '{$subAlias}' specified in '{$alias}' on resource {$resourceName}");
+					}
+
+					$subReadSetting = $allLoadedResourceReadSettings[$subAliasFromPartial];
+
+					if ($subReadSetting instanceof Setting\SingularResourceRead || $subReadSetting instanceof Setting\PluralResourceRead) {
+						/** @var Setting\SingularResourceRead|Setting\PluralResourceRead $subReadSetting */
+
+						$subLoadedResource = $this->getLoadedResource($subReadSetting->getResourceName());
+						$subPartialPrefix = isset($partialPrefix) ? "{$partialPrefix}.{$aliasFromPartial}.{$subAliasFromPartial}" : "{$aliasFromPartial}.{$subAliasFromPartial}";
+						$subReadSettings = $this->generateReadSettings($subLoadedResource, array('fields' => implode(',', $deepAliases)), $subPartialPrefix);
+
+						$this->partialSubReadSettings[$subPartialPrefix] = $subReadSettings;
+					}
+					else {
+						throw new FREST\Exception(FREST\Exception::PartialSyntaxNotSupported, "The field '{$subAliasFromPartial}' on resource {$resourceName} does not support partial syntax");
+					}
+
+					$subAlias = $subAliasFromPartial;
 				}
 
-				$subReadSetting = $allLoadedResourceReadSettings[$subAliasFromPartial];
-
-				if ($subReadSetting instanceof Setting\SingularResourceRead || $subReadSetting instanceof Setting\PluralResourceRead) {
-					/** @var Setting\SingularResourceRead|Setting\PluralResourceRead $subReadSetting */
-
-					$subLoadedResource = $this->getLoadedResource($subReadSetting->getResourceName());
-					$subPartialPrefix = isset($partialPrefix) ? "{$partialPrefix}.{$aliasFromPartial}.{$subAliasFromPartial}" : "{$aliasFromPartial}.{$subAliasFromPartial}";
-					$subReadSettings = $this->generateReadSettings($subLoadedResource, array('fields' => implode(',', $deepAliases)), $subPartialPrefix);
-
-					$this->partialSubReadSettings[$subPartialPrefix] = $subReadSettings;
-				}
-				else {
-					throw new FREST\Exception(FREST\Exception::PartialSyntaxNotSupported, "The field '{$subAliasFromPartial}' on resource {$resourceName} does not support partial syntax");
-				}
-
-				$subAlias = $subAliasFromPartial;
+				$loadedResourceReadSettings[$subAlias] = $allLoadedResourceReadSettings[$subAlias];
 			}
-
-			$loadedResourceReadSettings[$subAlias] = $allLoadedResourceReadSettings[$subAlias];
-		}
+		}		
 
 		$loadedPartialKey = isset($partialPrefix) ? "{$partialPrefix}.{$aliasFromPartial}" : $aliasFromPartial;
 		$this->partialSubReadSettings[$loadedPartialKey] = $loadedResourceReadSettings;
@@ -297,6 +307,10 @@ abstract class Read extends Request\Request {
 	 * @return array|NULL
 	 */
 	protected function generateFieldSpecs($resource, $readSettings, $prefixWithTableAbbrv = FALSE, $resourceAlias = NULL) {
+		if (!isset($readSettings)) {
+			return NULL;
+		}
+		
 		$fieldSpecs = array();
 
 		foreach ($readSettings as $readSetting) {
@@ -316,7 +330,9 @@ abstract class Read extends Request\Request {
 				$subResourceAlias = isset($resourceAlias) ? "{$resourceAlias}-{$alias}" : $alias;
 				$subFieldSpecs = $this->generateFieldSpecs($loadedResource, $subReadSettings, TRUE, $subResourceAlias);
 
-				$fieldSpecs = array_merge($fieldSpecs, $subFieldSpecs);
+				if (isset($subFieldSpecs)) {
+					$fieldSpecs = array_merge($fieldSpecs, $subFieldSpecs);
+				}
 			}
 			else if ($readSetting instanceof Setting\FieldRead) {
 				$alias = $readSetting->getAlias();
@@ -396,6 +412,10 @@ abstract class Read extends Request\Request {
 	 * @throws FREST\Exception
 	 */
 	protected function generateJoinSpecs($resource, $readSettings, $resourceAlias = NULL) {
+		if (!isset($readSettings)) {
+			return NULL;
+		}
+		
 		$joinSpecs = array();
 
 		/** @var Setting\SingularResourceRead $readSetting */
@@ -570,159 +590,165 @@ abstract class Read extends Request\Request {
 		$computedReadSettings = array();
 		
 		$timerInstance = isset($resourceAlias) ? $resourceAlias.'-parse' : 'parse';
-
-		/** @var Setting\Read $readSetting */
-		foreach ($readSettings as $readSetting) {
-			$this->frest->startTimingForLabel(Type\Timing::POST_PROCESSING, $timerInstance);
-
-			$alias = $readSetting->getAlias();
-			$partialSubKey = isset($resourceAlias) ? "{$resourceAlias}.{$alias}" : $alias;
-
-			if ($readSetting instanceof Setting\ComputedRead) {
-				$computedReadSettings[$alias] = $readSetting;
-			}
-			else if ($readSetting instanceof Setting\PluralResourceRead) {
-				/** @var Setting\PluralResourceRead $readSetting */
-
-				$parameters = $readSetting->getParameters();
-				
-				// overwrite 'fields' parameter if partial syntax found
-				$newFields = $this->generateNewFields($partialSubKey);
-				if (isset($newFields)) {
-					$parameters['fields'] = implode(',', $newFields);
+		
+		if (isset($readSettings)) {
+			/** @var Setting\Read $readSetting */
+			foreach ($readSettings as $readSetting) {
+				$this->frest->startTimingForLabel(Type\Timing::POST_PROCESSING, $timerInstance);
+	
+				$alias = $readSetting->getAlias();
+				$partialSubKey = isset($resourceAlias) ? "{$resourceAlias}.{$alias}" : $alias;
+	
+				if ($readSetting instanceof Setting\ComputedRead) {
+					$computedReadSettings[$alias] = $readSetting;
 				}
-				
-				$requiredAliases = $readSetting->getRequiredAliases();
-
-				$loadedResource = $this->getLoadedResource($readSetting->getResourceName());
-				
-				foreach ($objects as &$object) {
-					$requestParameters = array();
-					foreach ($parameters as $field=>$parameter) {
-						if (isset($requiredAliases[$field])) {
-							$requiredAlias = $requiredAliases[$field];
-							$requiredAliasValuePlaceholder = $loadedResource->injectValue($requiredAlias);
-							$parameter = str_replace($requiredAliasValuePlaceholder, $object->$requiredAlias, $parameter);
-						}
-
-						$requestParameters[$field] = $parameter;
-					}
-
-					$this->frest->stopTimingForLabel(Type\Timing::POST_PROCESSING, $timerInstance);
+				else if ($readSetting instanceof Setting\PluralResourceRead) {
+					/** @var Setting\PluralResourceRead $readSetting */
+	
+					$parameters = $readSetting->getParameters();
 					
-					$request = new PluralRead($this->frest, $requestParameters, NULL, $readSetting->getAlias());
-					$request->setWasInternallyLoaded(TRUE);
-					$request->setupWithResource($loadedResource);
-					
-					/** @var Result\PluralRead $result */
-					$result = $request->generateResult();
-
-					$this->frest->startTimingForLabel(Type\Timing::POST_PROCESSING, $timerInstance);
-
-					$object->$alias = $result->getResourceObjects();
-				}
-			}
-			else if ($readSetting instanceof Setting\SingularResourceRead) {
-				/** @var Setting\SingularResourceRead $readSetting */
-				
-				$loadedResource = $this->getLoadedResource($readSetting->getResourceName());
-
-				if (isset($this->partialSubReadSettings[$partialSubKey])) {
-					$subReadSettings = $this->partialSubReadSettings[$partialSubKey];
-					$this->addRequiredReadSettings($loadedResource, $subReadSettings);
-				}
-				else {
-					$subReadSettings = $this->getLoadedResourceReadSettings($loadedResource, $readSetting);
-				}
-				
-				$subObjects = array();
-				// remove table-prefixed properties on object as they should be on a sub-object instead
-				foreach ($objects as &$object) {
-					if (!isset($object->$alias)) {
-						$object->$alias = new \stdClass();
-						$subObjects[] = &$object->$alias;
+					// overwrite 'fields' parameter if partial syntax found
+					$newFields = $this->generateNewFields($partialSubKey);
+					if (isset($newFields)) {
+						$parameters['fields'] = implode(',', $newFields);
 					}
 					
-					foreach ($subReadSettings as $subReadSetting) {
-						if ($subReadSetting instanceof Setting\FieldRead) {
-							/** @var Setting\FieldRead $subReadSetting */
-
-							$subAlias = $subReadSetting->getAlias();
-							$subField = $loadedResource->getFieldForAlias($subAlias);
-							$subTable = $loadedResource->getTableForField($subField);
-							$subTableKey = isset($resourceAlias) ? "{$subTable}-{$resourceAlias}-{$alias}" : "{$subTable}-{$alias}";
-							$subTableAbbrv = $this->getTableAbbreviation($subTableKey);
-							$subProperty = "{$subTableAbbrv}_{$subAlias}";
-
-							$subValue = $object->$subProperty;
-
-							$object->$alias->$subAlias = $subValue;
-							unset($object->$subProperty);
+					$requiredAliases = $readSetting->getRequiredAliases();
+	
+					$loadedResource = $this->getLoadedResource($readSetting->getResourceName());
+					
+					foreach ($objects as &$object) {
+						$requestParameters = array();
+						foreach ($parameters as $field=>$parameter) {
+							if (isset($requiredAliases[$field])) {
+								$requiredAlias = $requiredAliases[$field];
+								$requiredAliasValuePlaceholder = $loadedResource->injectValue($requiredAlias);
+								$parameter = str_replace($requiredAliasValuePlaceholder, $object->$requiredAlias, $parameter);
+							}
+	
+							$requestParameters[$field] = $parameter;
 						}
-						else if ($subReadSetting instanceof Setting\SingularResourceRead) { // move properties of object that should belong to subObject (only nests once? idk)
-							$subLoadedResource = $this->getLoadedResource($subReadSetting->getResourceName());
-
-							$subReadAlias = $subReadSetting->getAlias();
-							$partialDeepKey = isset($resourceAlias) ? "{$resourceAlias}.{$alias}.{$subReadAlias}" : "{$alias}.{$subReadAlias}";
-
-							if (isset($this->partialSubReadSettings[$partialDeepKey])) {
-								$deepReadSettings = $this->partialSubReadSettings[$partialDeepKey];
-								$this->addRequiredReadSettings($subLoadedResource, $deepReadSettings);
+	
+						$this->frest->stopTimingForLabel(Type\Timing::POST_PROCESSING, $timerInstance);
+						
+						$request = new PluralRead($this->frest, $requestParameters, NULL, $readSetting->getAlias());
+						$request->setWasInternallyLoaded(TRUE);
+						$request->setupWithResource($loadedResource);
+						
+						/** @var Result\PluralRead $result */
+						$result = $request->generateResult();
+	
+						$this->frest->startTimingForLabel(Type\Timing::POST_PROCESSING, $timerInstance);
+	
+						$object->$alias = $result->getResourceObjects();
+					}
+				}
+				else if ($readSetting instanceof Setting\SingularResourceRead) {
+					/** @var Setting\SingularResourceRead $readSetting */
+					
+					$loadedResource = $this->getLoadedResource($readSetting->getResourceName());
+	
+					if (isset($this->partialSubReadSettings[$partialSubKey])) {
+						$subReadSettings = $this->partialSubReadSettings[$partialSubKey];
+						$this->addRequiredReadSettings($loadedResource, $subReadSettings);
+					}
+					else {
+						$subReadSettings = $this->getLoadedResourceReadSettings($loadedResource, $readSetting);
+					}
+					
+					$subObjects = array();
+					// remove table-prefixed properties on object as they should be on a sub-object instead
+					foreach ($objects as &$object) {
+						if (!isset($object->$alias)) {
+							$object->$alias = new \stdClass();
+							$subObjects[] = &$object->$alias;
+						}
+						
+						if (!isset($subReadSettings)) {
+							continue;
+						}
+						
+						foreach ($subReadSettings as $subReadSetting) {
+							if ($subReadSetting instanceof Setting\FieldRead) {
+								/** @var Setting\FieldRead $subReadSetting */
+	
+								$subAlias = $subReadSetting->getAlias();
+								$subField = $loadedResource->getFieldForAlias($subAlias);
+								$subTable = $loadedResource->getTableForField($subField);
+								$subTableKey = isset($resourceAlias) ? "{$subTable}-{$resourceAlias}-{$alias}" : "{$subTable}-{$alias}";
+								$subTableAbbrv = $this->getTableAbbreviation($subTableKey);
+								$subProperty = "{$subTableAbbrv}_{$subAlias}";
+	
+								$subValue = $object->$subProperty;
+	
+								$object->$alias->$subAlias = $subValue;
+								unset($object->$subProperty);
 							}
-							else {
-								$deepReadSettings = $this->getLoadedResourceReadSettings($subLoadedResource, $subReadSetting);
-							}
-							
-
-							foreach ($deepReadSettings as $deepReadSetting) {
-								if ($deepReadSetting instanceof Setting\FieldRead) {
-									$deepAlias = $deepReadSetting->getAlias();
-									$deepField = $subLoadedResource->getFieldForAlias($deepAlias);
-									$deepTable = $subLoadedResource->getTableForField($deepField);
-									$deepTableKey = "{$deepTable}-{$alias}-{$subReadAlias}";
-									$deepTableAbbrv = $this->getTableAbbreviation($deepTableKey);
-									$deepProperty = "{$deepTableAbbrv}_{$deepAlias}";
-
-									$deepValue = $object->$deepProperty;
-
-									$object->$alias->$deepProperty = $deepValue;
-									unset($object->$deepProperty);
+							else if ($subReadSetting instanceof Setting\SingularResourceRead) { // move properties of object that should belong to subObject (only nests once? idk)
+								$subLoadedResource = $this->getLoadedResource($subReadSetting->getResourceName());
+	
+								$subReadAlias = $subReadSetting->getAlias();
+								$partialDeepKey = isset($resourceAlias) ? "{$resourceAlias}.{$alias}.{$subReadAlias}" : "{$alias}.{$subReadAlias}";
+	
+								if (isset($this->partialSubReadSettings[$partialDeepKey])) {
+									$deepReadSettings = $this->partialSubReadSettings[$partialDeepKey];
+									$this->addRequiredReadSettings($subLoadedResource, $deepReadSettings);
+								}
+								else {
+									$deepReadSettings = $this->getLoadedResourceReadSettings($subLoadedResource, $subReadSetting);
+								}
+								
+	
+								foreach ($deepReadSettings as $deepReadSetting) {
+									if ($deepReadSetting instanceof Setting\FieldRead) {
+										$deepAlias = $deepReadSetting->getAlias();
+										$deepField = $subLoadedResource->getFieldForAlias($deepAlias);
+										$deepTable = $subLoadedResource->getTableForField($deepField);
+										$deepTableKey = "{$deepTable}-{$alias}-{$subReadAlias}";
+										$deepTableAbbrv = $this->getTableAbbreviation($deepTableKey);
+										$deepProperty = "{$deepTableAbbrv}_{$deepAlias}";
+	
+										$deepValue = $object->$deepProperty;
+	
+										$object->$alias->$deepProperty = $deepValue;
+										unset($object->$deepProperty);
+									}
 								}
 							}
 						}
 					}
+	
+					// parse sub-objects as well
+					$subAlias = $readSetting->getAlias();
+					$subResourceAlias = isset($resourceAlias) ? "{$resourceAlias}.{$subAlias}" : $subAlias;
+	
+					$this->parseObjects($loadedResource, $subObjects, $subReadSettings, $subResourceAlias);
 				}
-
-				// parse sub-objects as well
-				$subAlias = $readSetting->getAlias();
-				$subResourceAlias = isset($resourceAlias) ? "{$resourceAlias}.{$subAlias}" : $subAlias;
-
-				$this->parseObjects($loadedResource, $subObjects, $subReadSettings, $subResourceAlias);
-			}
-			else if ($readSetting instanceof Setting\FieldRead) {		
-				/** @var Setting\FieldRead $readSetting */
-				
-				$fieldSetting = $resource->getFieldSettingForAlias($alias);
-				$variableType = $fieldSetting->getVariableType();
-
-				foreach ($objects as &$object) {
-					$value = Type\Variable::castValue($object->$alias, $variableType);
+				else if ($readSetting instanceof Setting\FieldRead) {		
+					/** @var Setting\FieldRead $readSetting */
 					
-					$filterFunction = $readSetting->getFilterFunction();
-					if (isset($filterFunction)) {
-						if (!method_exists($resource, $filterFunction)) {
-							$resourceClassName = get_class($resource);
-							throw new FREST\Exception(FREST\Exception::FilterFunctionMissing, "Function name: '{$filterFunction}', resource: '{$resourceClassName}'");
+					$fieldSetting = $resource->getFieldSettingForAlias($alias);
+					$variableType = $fieldSetting->getVariableType();
+	
+					foreach ($objects as &$object) {
+						$value = Type\Variable::castValue($object->$alias, $variableType);
+						
+						$filterFunction = $readSetting->getFilterFunction();
+						if (isset($filterFunction)) {
+							if (!method_exists($resource, $filterFunction)) {
+								$resourceClassName = get_class($resource);
+								throw new FREST\Exception(FREST\Exception::FilterFunctionMissing, "Function name: '{$filterFunction}', resource: '{$resourceClassName}'");
+							}
+							
+							$value = $resource->$filterFunction($value);
 						}
 						
-						$value = $resource->$filterFunction($value);
+						$object->$alias = $value;
 					}
-					
-					$object->$alias = $value;
 				}
+				
+				$this->frest->stopTimingForLabel(Type\Timing::POST_PROCESSING, $timerInstance);
 			}
-			
-			$this->frest->stopTimingForLabel(Type\Timing::POST_PROCESSING, $timerInstance);
 		}
 
 		$this->frest->startTimingForLabel(Type\Timing::POST_PROCESSING, $timerInstance);
@@ -818,13 +844,15 @@ abstract class Read extends Request\Request {
 		
 		$class = get_class($resource);
 
-		foreach ($readSettings as $readSetting) {
-			$alias = $readSetting->getAlias();
+		if (isset($readSettings)) {
+			foreach ($readSettings as $readSetting) {
+				$alias = $readSetting->getAlias();
 
-			// remove property if added only by requirement of other properties
-			if (isset($this->requiredAliasesAdded[$class][$alias])) {
-				foreach ($objects as &$object) {
-					unset($object->$alias);
+				// remove property if added only by requirement of other properties
+				if (isset($this->requiredAliasesAdded[$class][$alias])) {
+					foreach ($objects as &$object) {
+						unset($object->$alias);
+					}
 				}
 			}
 		}

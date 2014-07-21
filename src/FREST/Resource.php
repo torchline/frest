@@ -230,7 +230,7 @@ abstract class Resource {
 	 */
 	public function injectValue($alias)
 	{
-		return '{INJECT::'.$alias.'}';
+		return '${'.$alias.'}';
 	}
 
 	/**
@@ -238,17 +238,18 @@ abstract class Resource {
 	 * @return null|string
 	 */
 	public static function aliasFromInjectedValue($injectedValue) {
-		if (strpos($injectedValue, '{INJECT::') === 0 && substr($injectedValue, -1) === '}') {
-			return substr($injectedValue, 9, -1);
+		if (strpos($injectedValue, '${') === 0 && substr($injectedValue, -1) === '}') {
+			return substr($injectedValue, 2, -1);
 		}
 		else {
 			return NULL;
 		}
 	}
-	
+		
 	
 	/**
-	 * Where everything is set in subclasses (e.g. read Setting, alias Setting, table Setting, etc.)
+	 * Where everything is set in subclasses (e.g. read Setting, alias Setting, table Setting, etc.).
+	 * This is called by the Router after it has set default values
 	 */
 	public abstract function setup();
 	

@@ -64,6 +64,46 @@ final class Variable {
 		}
 	}
 
+	/**
+	 * @param string $string
+	 * 
+	 * @return int|NULL
+	 */
+	public static function typeFromString($string) {
+		$string = strtolower($string);
+		
+		switch ($string) {
+			case 'bool':
+				return self::BOOL;
+				break;
+			case 'int':
+				return self::INT;
+				break;
+			case 'float':
+				return self::FLOAT;
+				break;
+			case 'string':
+				return self::STRING;
+				break;
+
+			case 'array:bool':
+				return self::ARRAY_BOOL;
+				break;
+			case 'array:int':
+				return self::ARRAY_INT;
+				break;
+			case 'array:float':
+				return self::ARRAY_FLOAT;
+				break;
+			case 'array:string':
+				return self::ARRAY_STRING;
+				break;
+
+			default:
+				return NULL;
+				break;
+		}
+	}
 	
 	/**
 	 * @param int $arrayVariableType

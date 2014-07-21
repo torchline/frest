@@ -6,6 +6,7 @@
 namespace FREST\Setting;
 
 use FREST\Type;
+use FREST\Exception;
 
 /**
  * Class Field
@@ -34,6 +35,28 @@ class Field {
 		$this->variableType = $variableType;
 	}
 
+	/**
+	 * @param string $alias
+	 * @param mixed $setting
+	 * @return Field|NULL
+	 * @throws Exception
+	 */
+	public static function fromJSONAliasSetting($alias, $setting) {
+		$fieldSetting = NULL;
+
+		if (!isset($setting['resources'])) { // not many-to-one
+			$field = isset($setting['field']) ? $setting['field'] : $alias;
+			$type = isset($setting['type']) ? Type\Variable::typeFromString($setting['type']) : Type\Variable::STRING;
+			if (!isset($type)) {
+				throw new Exception(Exception::Config, "Type '{$setting['type']}' is invalid for alias '{$alias}'");
+			}
+
+			$fieldSetting = Settings::field($alias, $field, $type);
+		}
+
+		return $fieldSetting;
+	}
+	
 	/**
 	 * @return string
 	 */

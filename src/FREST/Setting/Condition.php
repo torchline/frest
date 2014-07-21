@@ -21,7 +21,27 @@ class Condition {
 	public function __construct($alias) {
 		$this->alias = $alias;
 	}
+	// TODO: add parameters on to Condition Setting
 
+	/**
+	 * @param string $alias
+	 * @param mixed $setting
+	 * @return Condition|NULL
+	 */
+	public static function fromJSONAliasSetting($alias, $setting) {
+		$conditionSetting = NULL;
+
+		if (isset($setting['access']['read']['condition'])) {
+			$conditionAccess = $setting['access']['read']['condition'];
+
+			$conditionSetting = new Condition($alias);
+		}
+		else {
+			$conditionSetting = new Condition($alias);
+		}
+		
+		return $conditionSetting;
+	}
 	
 	/**
 	 * @return string
