@@ -165,7 +165,7 @@ abstract class Read extends Request\Request {
 		$aliasFromPartial = $this->parsePartialAliasFromString($alias, $definedSubAliases);
 
 		if (!isset($aliasFromPartial)) {
-			throw new FREST\Exception(FREST\Exception::InvalidField, "Invalid field name specified in 'fields' parameter: '{$alias}' on resource {$resource->getName()}");
+			throw new FREST\Exception(FREST\Exception::InvalidField, "Invalid field name specified in 'fields' parameter '{$alias}' on resource '{$resource->getName()}'");
 		}
 
 		$allReadSettings = $resource->getReadSettings();
@@ -174,11 +174,11 @@ abstract class Read extends Request\Request {
 		$readSetting = $allReadSettings[$aliasFromPartial];
 
 		if (!isset($readSetting)) {
-			throw new FREST\Exception(FREST\Exception::InvalidField, "Invalid field name specified in 'fields' parameter using partial syntax: '{$aliasFromPartial}' on resource {$resource->getName()}");
+			throw new FREST\Exception(FREST\Exception::InvalidField, "Invalid field name specified in 'fields' parameter using partial syntax: '{$aliasFromPartial}' on resource '{$resource->getName()}'");
 		}
 
 		if (!($readSetting instanceof Setting\SingularResourceRead) && !($readSetting instanceof Setting\PluralResourceRead)) {
-			throw new FREST\Exception(FREST\Exception::PartialSyntaxNotSupported, "The field '{$aliasFromPartial}' on resource {$resource->getName()} does not respond to partial object syntax");
+			throw new FREST\Exception(FREST\Exception::PartialSyntaxNotSupported, "The field '{$aliasFromPartial}' on resource '{$resource->getName()}' does not respond to partial object syntax");
 		}
 
 		// load external resource referenced by this resource
@@ -193,7 +193,7 @@ abstract class Read extends Request\Request {
 					$subAliasFromPartial = $this->parsePartialAliasFromString($subAlias, $deepAliases);
 
 					if (!isset($allLoadedResourceReadSettings[$subAliasFromPartial])) {
-						throw new FREST\Exception(FREST\Exception::InvalidField, "Invalid sub-field '{$subAlias}' specified in '{$alias}' on resource {$resource->getName()}");
+						throw new FREST\Exception(FREST\Exception::InvalidField, "Invalid sub-field '{$subAlias}' specified in '{$alias}' on resource '{$resource->getName()}'");
 					}
 
 					$subReadSetting = $allLoadedResourceReadSettings[$subAliasFromPartial];
@@ -208,7 +208,7 @@ abstract class Read extends Request\Request {
 						$this->partialSubReadSettings[$subPartialPrefix] = $subReadSettings;
 					}
 					else {
-						throw new FREST\Exception(FREST\Exception::PartialSyntaxNotSupported, "The field '{$subAliasFromPartial}' on resource {$resource->getName()} does not support partial syntax");
+						throw new FREST\Exception(FREST\Exception::PartialSyntaxNotSupported, "The field '{$subAliasFromPartial}' on resource '{$resource->getName()}' does not support partial syntax");
 					}
 
 					$subAlias = $subAliasFromPartial;
@@ -255,7 +255,7 @@ abstract class Read extends Request\Request {
 						
 						if (isset($subAliases)) {
 							if (!($requiredReadSetting instanceof Setting\SingularResourceRead)) {
-								throw new FREST\Exception(FREST\Exception::Config, "The required alias '{$requiredAliasFromPartial}' on resource {$resourceName} is not a resource and should contain partial object syntax");
+								throw new FREST\Exception(FREST\Exception::Config, "The required alias '{$requiredAliasFromPartial}' on resource '{$resourceName}' is not a resource and should contain partial object syntax");
 							}
 
 							$loadedResource = $this->getLoadedResource($requiredReadSetting->getResourceName());
