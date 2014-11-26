@@ -65,6 +65,13 @@ class Config {
 	 * @var bool (default: TRUE)
 	 */
 	protected $enableForcedMethod = TRUE;
+
+	/**
+	 * Enables passing of parameters in the URL for POST, PUT, and DELETE methods.
+	 * 
+	 * @var bool (default: FALSE)
+	 */
+	protected $enableGETParametersInAllRequests = FALSE;
 	
 	/**
 	 * The default LIMIT to apply to plural resource requests (can be overriden on a per-resource basis using the 'setDefaultLimit' method)
@@ -92,7 +99,7 @@ class Config {
 	 *  Class: Users extends Resource
 	 *  Resource: users
 	 *
-	 * @var string (default: __DIR__.'/Resource')
+	 * @var string (default: __DIR__.'/resources')
 	 */
 	protected $resourceDirectory;
 
@@ -379,6 +386,22 @@ class Config {
 	}
 
 	/**
+	 * @return boolean
+	 */
+	public function getEnableGETParametersInAllRequests()
+	{
+		return $this->enableGETParametersInAllRequests;
+	}
+
+	/**
+	 * @param boolean $enableGETParametersInAllRequests
+	 */
+	public function setEnableGETParametersInAllRequests($enableGETParametersInAllRequests)
+	{
+		$this->enableGETParametersInAllRequests = $enableGETParametersInAllRequests;
+	}
+
+	/**
 	 * @param \PDO $pdo
 	 */
 	public function setPDO($pdo) {
@@ -424,6 +447,10 @@ class Config {
 
 		if (isset($configArray['enableForcedMethod'])) {
 			$this->setEnableForcedMethod($configArray['enableForcedMethod']);
+		}
+
+		if (isset($configArray['enableGETParametersInAllRequests'])) {
+			$this->setEnableGETParametersInAllRequests($configArray['enableGETParametersInAllRequests']);
 		}
 
 		if (isset($configArray['defaultLimit'])) {

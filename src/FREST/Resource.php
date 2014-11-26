@@ -252,30 +252,12 @@ abstract class Resource {
 			return NULL;
 		}
 	}
-		
 	
 	/**
 	 * Where everything is set in subclasses (e.g. read Setting, alias Setting, table Setting, etc.).
 	 * This is called by the Router after it has set default values
 	 */
 	public abstract function setup();
-	
-	
-	/**
-	 * Returns whether or not to validate client's credentials given the specified request.
-	 * 
-	 * Also returns an array of scopes required for the specified request. These scopes are
-	 * validated by SNOAuth2 against the current scope permissions of the API consumer.
-	 * 
-	 * @param Request\Request $request
-	 * @param array $scopes
-	 * 
-	 * @return bool
-	 */
-	public function isAuthRequiredForRequest(/** @noinspection PhpUnusedParameterInspection */$request, &$scopes = NULL) {
-		return FALSE;
-	}
-
 	
 	/**
 	 * @param string $field

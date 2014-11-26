@@ -6,6 +6,7 @@
 		"username" : "root",
 		"password" : "root"
 	},
+    "enableGETParametersInAllRequests" : true,
 	"suppressHTTPStatusCodes" : false,
 	"showDiagnostics" : false,
 	"checkResourceValidity" : true,

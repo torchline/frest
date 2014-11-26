@@ -156,7 +156,7 @@ class Router {
 					case Type\Method::POST:
 					case Type\Method::PUT:
 					case Type\Method::DELETE:
-						$parameters = $_POST;
+						$parameters = $this->config->getEnableGETParametersInAllRequests() ? $_REQUEST : $_POST;
 						break;
 					default:
 						$methodString = Type\Method::getString($actualMethod);
@@ -358,24 +358,6 @@ class Router {
 
 		/** @var Resource $resource */
 		$resource = $this->loadedResources[$resourceName];
-		
-		if (isset($request) && method_exists($resource, 'isAuthRequiredForRequest')) {
-			$scopes = NULL; // TODO: get scopes
-			
-			$isAuthRequired = $resource->isAuthRequiredForRequest($request, $scopes);
-
-			if ($isAuthRequired) {
-				if (isset($scopes)) {
-					$scopeString = implode(' ', $scopes);
-				}
-				else {
-					$scopeString = '';
-				}
-				
-				$snoAuth = new \SNOAuth2_ClientCredentials(new \SNOAuth2Config($this->config->getAuthPDO()));
-				$snoAuth->verifyResourceAccess($scopeString);
-			}
-		}
 		
 		return $resource;
 	}
