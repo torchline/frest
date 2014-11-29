@@ -25,21 +25,21 @@ Installation
 
 Querying
 =========
-FUNCTIONS:
-	Names:
-		gt, gte, lt, lte, in, like
-	Usage:
+Function names: **gt**, **gte**, **lt**, **lte**, **in**, **like**
+```
 		?username=like(FullMetal~) - starts with
 		?money=gt(50) - greater than
 		?hair=in(blonde,black,red) - is one of
-
-PARTIAL READS:
-	Usage:
+```
+Partial objects:
+```
 		?fields=id,username,email - read only these fields back
 		?fields=* - read all fields back
 		(if no fields specified, it goes to default)
 
 		?fields=name,owner(id, firstName, lastName) - do partial reads on child objects
-
-MISCELLANEOUS:
+```
+Miscellaneous:
+```
 	suppress_http_error_codes=true - make request always return 200 with actual http code embeded in response
+```
