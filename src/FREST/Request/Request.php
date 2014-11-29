@@ -61,6 +61,7 @@ abstract class Request {
 		$this->miscParameters['method'] = TRUE;
 		$this->miscParameters['callback'] = TRUE;
 		$this->miscParameters['_'] = TRUE;
+		$this->miscParameters['_url'] = TRUE;
 		$this->miscParameters['suppress_http_status_codes'] = TRUE;
 		$this->miscParameters['access_token'] = TRUE;
 	}
