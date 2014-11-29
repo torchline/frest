@@ -78,13 +78,13 @@ class Router {
 					// check if base name is int
 					$secondBaseName = basename($urlInfo['dirname']);
 
-					if (is_numeric($urlBaseName) && intval($urlBaseName) == $urlBaseName) {
+					if (is_numeric($urlBaseName) && strpos($urlBaseName, '.') == NULL) {
 						// assume this int is actually an id and resource is specified in previous path component
 
 						$resourceName = basename($urlInfo['dirname']);
 						$resourceID = intval($urlBaseName);
 					}
-					else if (is_numeric($secondBaseName) && intval($secondBaseName) == $secondBaseName) {
+					else if (is_numeric($secondBaseName) && strpos($secondBaseName, '.') == NULL) {
 						// assume this int is actually an id and resource precedes it and Func follows it
 						$resourceName = basename(dirname($urlInfo['dirname']));
 						$resourceID = intval($secondBaseName);
