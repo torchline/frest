@@ -22,3 +22,24 @@ Installation
 =========
 1. Composer - "torchline/frest"
 2. 
+
+Querying
+=========
+FUNCTIONS:
+	Names:
+		gt, gte, lt, lte, in, like
+	Usage:
+		?username=like(FullMetal~) - starts with
+		?money=gt(50) - greater than
+		?hair=in(blonde,black,red) - is one of
+
+PARTIAL READS:
+	Usage:
+		?fields=id,username,email - read only these fields back
+		?fields=* - read all fields back
+		(if no fields specified, it goes to default)
+
+		?fields=name,owner(id, firstName, lastName) - do partial reads on child objects
+
+MISCELLANEOUS:
+	suppress_http_error_codes=true - make request always return 200 with actual http code embeded in response
