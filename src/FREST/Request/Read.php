@@ -104,12 +104,7 @@ abstract class Read extends Request\Request {
 					$readSettings = $resource->getReadSettings();
 					unset($userSpecifiedAliases[0]); // if other fields specified after wildcard, then allow them if partial
 				}
-				static $borg = 0;
-				$borg++;
-				if ($borg > 1) {
-					echo '<pre>'; var_dump($userSpecifiedAliases); die();
-				}
-
+				
 				foreach ($userSpecifiedAliases as $alias) {
 					if ($alias == '*') {
 						throw new FREST\Exception(FREST\Exception::InvalidUsage, "Wildcard field parameter must be specified before any others (for readability).");
