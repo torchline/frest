@@ -20,8 +20,9 @@ Features
 
 Installation
 =========
-1. Composer - "torchline/frest"
-2. 
+Require this package with [composer](https://getcomposer.org/):
+
+`composer require torchline/frest`
 
 Querying
 =========
