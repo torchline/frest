@@ -992,8 +992,8 @@ abstract class Read extends Request\Request {
 	 * @return string|NULL
 	 */
 	protected static function getHandleAndValues($string, &$values = NULL) {
-		$firstParenPos = strpos($string, '(');
-		$lastParenPos = strrpos($string, ')');
+		$firstParenPos = strpos($string, '{');
+		$lastParenPos = strrpos($string, '}');
 
 		$handle = NULL;
 		if ($firstParenPos !== FALSE && $lastParenPos !== FALSE && $lastParenPos == strlen($string) - 1 && $firstParenPos < $lastParenPos) {
@@ -1074,9 +1074,11 @@ abstract class Read extends Request\Request {
 			$char = $paramterListString{$i};
 			switch ($char) {
 				case '(':
+				case '{':
 					$parenthesesDepth++;
 					break;
-				case ')':
+				case '}':
+				case '}':
 					$parenthesesDepth--;
 					break;
 				case ',':
@@ -1113,7 +1115,7 @@ abstract class Read extends Request\Request {
 						throw new FREST\Exception(FREST\Exception::FieldsParameterNotAllowed);
 					}
 
-					if (!$this->resource->getAllowPartialSyntax() && (strpos($value, '(') !== FALSE || strpos($value, ')') !== FALSE)) {
+					if (!$this->resource->getAllowPartialSyntax() && (strpos($value, '{') !== FALSE || strpos($value, '}') !== FALSE)) {
 						throw new FREST\Exception(FREST\Exception::PartialSyntaxNotAllowed);
 					}
 				}
