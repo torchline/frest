@@ -11,6 +11,12 @@ namespace FREST\Spec;
  */
 class Condition {
 
+	/** @var \FREST\Resource $resource */
+	protected $resource;
+
+	/** @var string $resourceAlias */
+	protected $resourceAlias;
+	
 	/** @var string $alias */
 	protected $alias;
 	
@@ -27,12 +33,16 @@ class Condition {
 	
 
 	/**
+	 * @param \FREST\Resource $resource
+	 * @param string $resourceAlias|NULL
 	 * @param string $alias
 	 * @param string $field
 	 * @param mixed $value
 	 * @param int $variableType
 	 */
-	public function __construct($alias, $field, $value, $variableType) {
+	public function __construct($resource, $resourceAlias, $alias, $field, $value, $variableType) {
+		$this->resource = $resource;
+		$this->resourceAlias = $resourceAlias;
 		$this->alias = $alias;
 		$this->field = $field;
 		$this->value = $value;
@@ -49,6 +59,13 @@ class Condition {
 		return $this->alias;
 	}
 
+	/**
+	 * @return string
+	 */
+	public function getResourceAlias() {
+		return $this->resourceAlias;
+	}
+	
 	/**
 	 * @return string
 	 */
@@ -70,6 +87,11 @@ class Condition {
 		return $this->variableType;
 	}
 
-
+	/**
+	 * @return \FREST\Resource
+	 */
+	public function getResource() {
+		return $this->resource;
+	}
 	
 }

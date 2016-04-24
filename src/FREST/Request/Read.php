@@ -77,6 +77,7 @@ abstract class Read extends Request\Request {
 		}
 		
 		$this->joinSpecs = $this->generateJoinSpecs($this->resource, $this->readSettings);
+		
 		$this->fieldSpecs = $this->generateFieldSpecs($this->resource, $this->readSettings);
 		
 		$this->tableSpecs = $this->generateTableSpecs($this->resource, $this->readSettings);
@@ -96,7 +97,7 @@ abstract class Read extends Request\Request {
 		$allReadSettings = $resource->getReadSettings();
 		
 		if (isset($parameters['fields'])) {
-			$userSpecifiedAliases = $this->parseFieldParameterList($parameters['fields']);
+			$userSpecifiedAliases = self::parseFieldParameterList($parameters['fields']);
 			
 			if (isset($userSpecifiedAliases)) {
 				$hasWildcard = count($userSpecifiedAliases) > 0 && $userSpecifiedAliases[0] == '*'; // must be specified first
@@ -139,7 +140,7 @@ abstract class Read extends Request\Request {
 				}
 			}
 		}
-
+		
 		if (count($readSettings) > 0) {
 			$this->addRequiredReadSettings($resource, $readSettings);
 			return $readSettings;
@@ -157,7 +158,7 @@ abstract class Read extends Request\Request {
 	 */
 	private function generatePartialReadSetting($resource, $alias, $partialPrefix = NULL) {
 		// check for Setting for partial object alias
-		$aliasFromPartial = $this->parsePartialAliasFromString($alias, $definedSubAliases);
+		$aliasFromPartial = self::getHandleAndValues($alias, $definedSubAliases);
 
 		if (!isset($aliasFromPartial)) {
 			throw new FREST\Exception(FREST\Exception::InvalidField, "Invalid field name specified in 'fields' parameter '{$alias}' on resource '{$resource->getName()}'");
@@ -185,7 +186,7 @@ abstract class Read extends Request\Request {
 		if (isset($definedSubAliases)) {
 			foreach ($definedSubAliases as $subAlias) {
 				if (!isset($allLoadedResourceReadSettings[$subAlias])) {
-					$subAliasFromPartial = $this->parsePartialAliasFromString($subAlias, $deepAliases);
+					$subAliasFromPartial = self::getHandleAndValues($subAlias, $deepAliases);
 
 					if (!isset($allLoadedResourceReadSettings[$subAliasFromPartial])) {
 						throw new FREST\Exception(FREST\Exception::InvalidField, "Invalid sub-field '{$subAlias}' specified in '{$alias}' on resource '{$resource->getName()}'");
@@ -238,7 +239,7 @@ abstract class Read extends Request\Request {
 				$requiredAliases = $readSetting->getRequiredAliases();
 				
 				foreach ($requiredAliases as $requiredAlias) {
-					$requiredAliasFromPartial = $this->parsePartialAliasFromString($requiredAlias, $subAliases, FALSE);
+					$requiredAliasFromPartial = self::getHandleAndValues($requiredAlias, $subAliases) ?: $requiredAlias;
 					
 					// TODO: error check required alias partial
 					
@@ -436,7 +437,7 @@ abstract class Read extends Request\Request {
 				
 				$subJoinSpecs = $this->generateJoinSpecs($loadedResource, $subReadSettings, $readSetting->getAlias());
 				
-				$field = $resource->getFieldForAlias($alias);
+				$field = $loadedResource->getFieldForAlias($alias);
 
 				$joinSpec = new Spec\Join(
 					$resourceAlias,
@@ -452,14 +453,53 @@ abstract class Read extends Request\Request {
 				$joinSpecs[$alias] = $joinSpec;
 			}
 		}
+		
+		// check if there are any partial parameter keys (e.g. "?country(name)=canada")
+		foreach ($this->parameters as $parameter=>$value) {
+			$subAliases = NULL;
+			$resourceAlias = self::getHandleAndValues($parameter, $subAliases) ?: $parameter;
+			
+			if (isset($subAliases)) { // we don't care what's inside when thinking about JOINs (i.e. we don't care about "name" ^^)
+				$readSettings = $this->resource->getReadSettings();
+				$readSetting = $readSettings[$resourceAlias];
+				$resourceName = $readSetting->getResourceName();
+				$loadedResource = $this->getLoadedResource($resourceName, $this);
 
+				$alias = $readSetting->getAlias();
+				$field = $this->resource->getFieldForAlias($alias);
+				
+				$loadedResourceJoinField = $loadedResource->getFieldForAlias($readSetting->getResourceJoinAlias());
+				if (!isset($loadedResourceJoinField)) {
+					throw new FREST\Exception(FREST\Exception::Config, "Field not found in resource '{$readSetting->getResourceName()}' for alias '{$readSetting->getResourceJoinAlias()}'");
+				}
+				
+				$loadedResourceTable = $loadedResource->getTableForField($loadedResourceJoinField);
+				if (!isset($loadedResourceTable)) {
+					throw new FREST\Exception(FREST\Exception::Config, "Table not found in resource '{$readSetting->getResourceName()}' for alias '{$readSetting->getResourceJoinAlias()}'");
+				}
+				
+				$joinSpec = new Spec\Join(
+					NULL,
+					$resourceName,
+					$loadedResource->getTableForField($loadedResourceJoinField),
+					$loadedResourceJoinField,
+					$field,
+					$alias,
+					'INNER',
+					NULL
+				);
+				
+				$joinSpecs[$alias] = $joinSpec;
+			}
+		}
+		
 		if (count($joinSpecs) > 0) {
 			return $joinSpecs;
 		}
 
 		return NULL;
 	}
-
+	
 	/**
 	 * @param FREST\Resource $resource
 	 * @param array $joinSpecs
@@ -481,6 +521,7 @@ abstract class Read extends Request\Request {
 			$joinType = $joinSpec->getType();
 			$joinTable = $joinSpec->getTableToJoin();
 			$joinTableKey = isset($resourceAlias) ? "{$joinTable}-{$resourceAlias}-{$alias}" : "{$joinTable}-{$alias}";
+			//$joinTableKey = isset($resourceAlias) ? "{$joinTable}-{$resourceAlias}-{$alias}" : $joinTable;
 			$joinTableAbbrv = $this->getTableAbbreviation($joinTableKey);
 
 			$field = $joinSpec->getField();
@@ -775,7 +816,7 @@ abstract class Read extends Request\Request {
 				$hasAllAliasesRequired = TRUE;
 				$requiredAliases = $computedReadSetting->getRequiredAliases();
 				foreach ($requiredAliases as $requiredAlias) {
-					$requiredAliasFromPartial = $this->parsePartialAliasFromString($requiredAlias, $subAliases, FALSE);
+					$requiredAliasFromPartial = self::getHandleAndValues($requiredAlias, $subAliases) ?: $requiredAlias;
 					
 					// TODO: error check required alias partial syntax
 					
@@ -946,32 +987,22 @@ abstract class Read extends Request\Request {
 
 	/**
 	 * @param string $string
-	 * @param array $subAliases
-	 * @param bool $onlyAllowPartialSyntax
+	 * @param array $values
 	 *
 	 * @return string|NULL
 	 */
-	protected function parsePartialAliasFromString($string, &$subAliases = NULL, $onlyAllowPartialSyntax = TRUE) {
+	protected static function getHandleAndValues($string, &$values = NULL) {
 		$firstParenPos = strpos($string, '(');
 		$lastParenPos = strrpos($string, ')');
 
-		// check for partial syntax
+		$handle = NULL;
 		if ($firstParenPos !== FALSE && $lastParenPos !== FALSE && $lastParenPos == strlen($string) - 1 && $firstParenPos < $lastParenPos) {
-			// split into alias and its partial field list
-			$subAliasesString = trim(substr($string, $firstParenPos + 1, -1));
-			$subAliases = $this->parseFieldParameterList($subAliasesString);
-			$alias = substr($string, 0, $firstParenPos);
-		}
-		else {
-			if ($onlyAllowPartialSyntax) {
-				return NULL;
-			}
-			
-			$alias = $string;
-			$subAliases = NULL;
+			$valuesString = trim(substr($string, $firstParenPos + 1, -1));
+			$values = self::parseFieldParameterList($valuesString);
+			$handle = substr($string, 0, $firstParenPos);
 		}
 
-		return $alias;
+		return $handle;
 	}
 
 
@@ -983,7 +1014,7 @@ abstract class Read extends Request\Request {
 		if (!isset($this->tableAbbreviations[$table])) {
 			$abbreviationCount = count($this->tableAbbreviations);
 			$abbreviation = 't'.$abbreviationCount;
-
+			
 			$this->tableAbbreviations[$table] = $abbreviation;
 		}
 
@@ -1030,7 +1061,7 @@ abstract class Read extends Request\Request {
 	 * @param $paramterListString
 	 * @return array
 	 */
-	protected function parseFieldParameterList($paramterListString) {
+	protected static function parseFieldParameterList($paramterListString) {
 		$length = strlen($paramterListString);
 		if ($length == 0) {
 			return NULL;

@@ -12,6 +12,9 @@ namespace FREST\Spec;
 class Order {
 
 	/** @var string */
+	protected $resourceAlias;
+	
+	/** @var string */
 	protected $alias;
 
 	/** @var $field */
@@ -24,12 +27,14 @@ class Order {
 	protected $table;
 
 	/**
+	 * @param string $resourceAlias
 	 * @param string $alias
 	 * @param string $field
 	 * @param string $table
 	 * @param string $direction
 	 */
-	function __construct($alias, $field, $table, $direction) {
+	function __construct($resourceAlias, $alias, $field, $table, $direction) {
+		$this->resourceAlias = $resourceAlias;
 		$this->alias = $alias;
 		$this->field = $field;
 		$this->table = $table;
@@ -67,6 +72,14 @@ class Order {
 	public function getTable()
 	{
 		return $this->table;
+	}
+
+	/**
+	 * @return string
+	 */
+	public function getResourceAlias()
+	{
+		return $this->resourceAlias;
 	}
 
 

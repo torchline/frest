@@ -605,7 +605,8 @@ abstract class Resource {
 
 				/** @var Setting\Field $fieldSetting */
 				foreach ($fieldSettings as $fieldSetting) {
-					$conditionSettings[] = Setting\Settings::condition($fieldSetting->getAlias());
+					$alias = $fieldSetting->getAlias();
+					$conditionSettings[$alias] = Setting\Settings::condition($alias);
 				}
 			}
 			

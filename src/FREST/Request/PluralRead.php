@@ -50,6 +50,7 @@ class PluralRead extends Read {
 		
 		$this->orderSpecs = $this->generateOrderSpecs();
 		$this->conditionSpecs = $this->generateConditionSpecs();
+		
 		$this->queryParameterSpecs = NULL; // built in generateResult along with conditionString
 	}
 
@@ -122,9 +123,9 @@ class PluralRead extends Read {
 				$pdoParamType
 			);
 		}
-
+		//die($sql);
 		if (!$resultsStmt->execute()) {
-			throw new FREST\Exception(FREST\Exception::SQLError, 'Error querying database for Result: ');
+			throw new FREST\Exception(FREST\Exception::SQLError, 'Error querying database for Result');
 		}
 
 		$objects = $resultsStmt->fetchAll(\PDO::FETCH_OBJ);
@@ -152,11 +153,11 @@ class PluralRead extends Read {
 		$conditionSpecs = array();
 		
 		$conditionSettings = $this->resource->getConditionSettings();
-
+		
+		$unmatchedConditionSettings = array();
+		
 		/** @var Setting\Condition $conditionSetting */
-		foreach ($conditionSettings as $conditionSetting) {
-			$alias = $conditionSetting->getAlias();
-
+		foreach ($conditionSettings as $alias=>$conditionSetting) {
 			if (isset($this->parameters[$alias])) {
 				$fieldSetting = $this->resource->getFieldSettingForAlias($alias);
 
@@ -165,6 +166,8 @@ class PluralRead extends Read {
 				$variableType = $fieldSetting->getVariableType();
 
 				$conditionSpec = new Spec\Condition(
+					$this->resource,
+					NULL,
 					$alias,
 					$field, 
 					$value, 
@@ -173,6 +176,40 @@ class PluralRead extends Read {
 
 				$conditionSpecs[$alias] = $conditionSpec;
 			}
+			else {
+				$unmatchedConditionSettings[$alias] = $conditionSetting;
+			}
+		}
+		
+		$parameters = $this->getParameters();
+		
+		// check for partial syntax (e.g. "?country(name)=canada")
+		foreach ($parameters as $parameter=>$value) {
+			$subAliases = NULL;
+			$resourceAlias = self::getHandleAndValues($parameter, $subAliases);
+			if (!isset($resourceAlias) || !isset($unmatchedConditionSettings[$resourceAlias])) {
+				continue;
+			}
+
+			$readSettings = $this->resource->getReadSettings();
+			$readSetting = $readSettings[$resourceAlias];
+			$resourceName = $readSetting->getResourceName();
+			$loadedResource = $this->getLoadedResource($resourceName, $this);
+
+			$alias = $subAliases[0]; // assume this is already valid (sanity check should already have been done)
+			$fieldSetting = $loadedResource->getFieldSettingForAlias($alias);
+			$variableType = $fieldSetting->getVariableType();
+
+			$conditionSpec = new Spec\Condition(
+				$loadedResource,
+				$resourceAlias,
+				$alias,
+				$fieldSetting->getField(),
+				$value,
+				$variableType
+			);
+
+			$conditionSpecs[$alias] = $conditionSpec;
 		}
 		
 		if (count($conditionSpecs) > 0) {
@@ -242,8 +279,7 @@ class PluralRead extends Read {
 									$value,
 									Type\Variable::arrayElementVariableType($parsedValueVariableType)
 								);
-
-
+								
 								$queryParameterSpecs[] = $queryParameterSpec;
 							}
 
@@ -303,16 +339,21 @@ class PluralRead extends Read {
 					$queryParameterSpecs[$alias] = $queryParameterSpec;
 				}
 
-				$table = $this->resource->getTableForField($conditionSpec->getField());
-				$tableAbbreviation = $this->getTableAbbreviation($table);
+				$resource = $conditionSpec->getResource();
+				$resourceAlias = $conditionSpec->getResourceAlias();
+				
+				$table = $resource->getTableForField($conditionSpec->getField());
+				$tableKey = isset($resourceAlias) ? "{$table}-{$resourceAlias}" : $table;
+				$tableAbbreviation = $this->getTableAbbreviation($tableKey);
+				
 				$queryField = $conditionSpec->getField();
-
+				
 				if ($conditionCount > 0) {
 					$conditionString .= ' AND ';
 				}
 
 				$conditionString .= "{$tableAbbreviation}.{$queryField} {$queryOperator} {$queryParameterName}";
-
+				
 				$conditionCount++;
 			}
 		}
@@ -385,6 +426,7 @@ class PluralRead extends Read {
 	 * @throws FREST\Exception
 	 */
 	private function generateOrderSpecs() {
+		
 		$orderSpecs = array();
 		
 		if (isset($this->parameters['orderBy'])) {
@@ -402,17 +444,25 @@ class PluralRead extends Read {
 				$pieces = explode(':', trim($orderByParam));
 				$alias = trim($pieces[0]);
 				
-				$fieldSetting = $this->resource->getFieldSettingForAlias($alias);
-				if (!isset($fieldSetting)) {
-					throw new FREST\Exception(FREST\Exception::InvalidValue, "The resource does not have a field named '{$alias}'");
+				$subAliases = NULL;
+				$resourceAlias = self::getHandleAndValues($alias, $subAliases);
+				$finalAlias = $resourceAlias ?: $alias;
+				
+				if (isset($subAliases) && count($subAliases) != 1) {
+					throw new FREST\Exception(FREST\Exception::InvalidValue, "Only one subalias is allowed within the parens '{$alias}'");
 				}
 				
-				if (!isset($orderSettings[$alias])) {
-					throw new FREST\Exception(FREST\Exception::InvalidValue, "The resource does not allow ordering with '{$alias}'");
+				$fieldSetting = $this->resource->getFieldSettingForAlias($finalAlias);
+				if (!isset($fieldSetting)) {
+					throw new FREST\Exception(FREST\Exception::InvalidValue, "The resource does not have a field named '{$finalAlias}'");
+				}
+				
+				if (!isset($orderSettings[$finalAlias])) {
+					throw new FREST\Exception(FREST\Exception::InvalidValue, "The resource does not allow ordering with '{$finalAlias}'");
 				}
 				
 				/** @var Setting\Order $orderSetting */
-				$orderSetting = $orderSettings[$alias];
+				$orderSetting = $orderSettings[$finalAlias];
 				
 				if (count($pieces) > 1) {
 					$userDirection = trim($pieces[1]);
@@ -440,12 +490,33 @@ class PluralRead extends Read {
 				$field = $this->resource->getFieldForAlias($alias);
 				$table = $this->resource->getTableForField($field);
 				
-				$orderSpec = new Spec\Order(
-					$alias,
-					$field,
-					$table,
-					$direction
-				);
+				if (isset($resourceAlias)) {
+					$subAlias = $subAliases[0];
+										
+					$readSettings = $this->resource->getReadSettings();
+					/** @var \FREST\Setting\Read $readSetting */
+					$readSetting = $readSettings[$resourceAlias];
+					
+					$loadedResource = $this->getLoadedResource($readSetting->getResourceName(), $this);
+					$resourceField = $loadedResource->getFieldForAlias($subAlias);
+					
+					$orderSpec = new Spec\Order(
+						$resourceAlias,
+						$subAlias,
+						$resourceField,
+						$loadedResource->getTableForField($resourceField),
+						$direction
+					);
+				}
+				else {
+					$orderSpec = new Spec\Order(
+						NULL,
+						$alias,
+						$field,
+						$table,
+						$direction
+					);
+				}
 				
 				$orderSpecs[] = $orderSpec;
 			}
@@ -470,8 +541,10 @@ class PluralRead extends Read {
 			/** @var Spec\Order $orderSpec */
 			foreach ($orderSpecs as $orderSpec) {
 				$field = $orderSpec->getField();
+				$resourceAlias = $orderSpec->getResourceAlias();
 				$table = $orderSpec->getTable();
-				$tableAbbrv = $this->getTableAbbreviation($table);
+				$tableKey = isset($resourceAlias) ? "{$table}-{$resourceAlias}" : $table;
+				$tableAbbrv = $this->getTableAbbreviation($tableKey);
 				$direction = $orderSpec->getDirection();
 
 				$orderStrings[] = "{$tableAbbrv}.{$field} {$direction}";
@@ -561,13 +634,19 @@ class PluralRead extends Read {
 		if (!$isValid) { // if not already determined to be valid
 			$conditionSettings = $this->resource->getConditionSettings();
 			
-			if (isset($conditionSettings[$parameter])) {
+			$aliasValues = NULL;
+			$alias = self::getHandleAndValues($parameter, $aliasValues) ?: $parameter;
+			if (!isset($alias) || (isset($aliasValues) && count($aliasValues) != 1)) {
+				throw new FREST\Exception(FREST\Exception::InvalidField, $parameter);
+			}
+			
+			if (isset($conditionSettings[$alias])) {
 				/** @var Setting\Condition $conditionSetting */
-				$conditionSetting = $conditionSettings[$parameter];
+				$conditionSetting = $conditionSettings[$alias];
 				
 				$fieldSetting = $this->resource->getFieldSettingForAlias($conditionSetting->getAlias());
 				if (!isset($fieldSetting)) {
-					throw new FREST\Exception(FREST\Exception::Config, "No field setting found for condition '{$parameter}' in resource {$this->resource->getName()}");
+					throw new FREST\Exception(FREST\Exception::Config, "No field setting found for condition '{$alias}' in resource {$this->resource->getName()}");
 				}
 
 				$isValid = TRUE;
