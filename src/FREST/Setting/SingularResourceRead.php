@@ -10,10 +10,7 @@ namespace FREST\Setting;
  * @package FREST\Setting
  */
 class SingularResourceRead extends Read {
-	
-	/** @var string */
-	protected $resourceName;
-	
+		
 	/** @var string */
 	protected $resourceJoinAlias;
 	
@@ -43,14 +40,7 @@ class SingularResourceRead extends Read {
 	public function getResourceJoinAlias() {
 		return $this->resourceJoinAlias;
 	}
-
-	/**
-	 * @return string
-	 */
-	public function getResourceName() {
-		return $this->resourceName;
-	}
-
+	
 	/**
 	 * @return array
 	 */

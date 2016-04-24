@@ -12,10 +12,7 @@ use FREST\Resource;
  * @package FREST\Setting
  */
 class PluralResourceRead extends Read {
-
-	/** @var string */
-	protected $resourceName;
-	
+		
 	/** @var array */
 	protected $parameters;
 
@@ -44,15 +41,6 @@ class PluralResourceRead extends Read {
 		}
 	}
 	
-	
-
-	/**
-	 * @return string
-	 */
-	public function getResourceName() {
-		return $this->resourceName;
-	}
-
 	/**
 	 * @return array
 	 */

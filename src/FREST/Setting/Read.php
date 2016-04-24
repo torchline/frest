@@ -11,6 +11,9 @@ use FREST\Exception;
  * @package FREST\Setting
  */
 abstract class Read {
+
+	/** @var string */
+	protected $resourceName;
 	
 	/** @var string */
 	protected $alias;
@@ -76,6 +79,13 @@ abstract class Read {
 	 */
 	public function getAlias() {
 		return $this->alias;
+	}
+
+	/**
+	 * @return string
+	 */
+	public function getResourceName() {
+		return $this->resourceName;
 	}
 
 	/**
