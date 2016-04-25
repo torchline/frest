@@ -106,10 +106,10 @@ class PluralRead extends Read {
 		$countStmt = $pdo->prepare($countSQL);
 
 		/** @var Spec\QueryParameter $queryParameterSpec */
-		foreach ($this->queryParameterSpecs as $alias=>$queryParameterSpec) {
+		foreach ($this->queryParameterSpecs as $parameterName=>$queryParameterSpec) {
 			$pdoParamType = Type\Variable::pdoTypeFromVariableType($queryParameterSpec->getVariableType());
 
-			if ($alias !== '_limit' && $alias !== '_offset') {
+			if ($parameterName !== '_limit' && $parameterName !== '_offset') {
 				$countStmt->bindValue(
 					$queryParameterSpec->getParameterName(),
 					$queryParameterSpec->getValue(),
@@ -209,7 +209,8 @@ class PluralRead extends Read {
 				$variableType
 			);
 
-			$conditionSpecs[$alias] = $conditionSpec;
+			$key = "{$resourceAlias}_{$alias}";
+			$conditionSpecs[$key] = $conditionSpec;
 		}
 		
 		if (count($conditionSpecs) > 0) {
@@ -244,9 +245,13 @@ class PluralRead extends Read {
 			);
 			
 			/** @var Spec\Condition $conditionSpec */
-			foreach ($conditionSpecs as $alias=>$conditionSpec) {
+			foreach ($conditionSpecs as $conditionSpec) {
+				$alias = $conditionSpec->getAlias();
 				$queryParameterNames = NULL;
 				$queryOperator = '=';
+				
+				$resource = $conditionSpec->getResource();
+				$resourceAlias = $conditionSpec->getResourceAlias();
 				
 				$functionUsed = $this->checkForFunctions(
 					$conditionSpec->getValue(), 
@@ -280,7 +285,7 @@ class PluralRead extends Read {
 									Type\Variable::arrayElementVariableType($parsedValueVariableType)
 								);
 								
-								$queryParameterSpecs[] = $queryParameterSpec;
+								$queryParameterSpecs[$field] = $queryParameterSpec;
 							}
 
 							$queryParameterName = '('.implode(',', $parameterNames).')';
@@ -289,7 +294,7 @@ class PluralRead extends Read {
 							break;
 						
 						default:
-							$queryParameterName = ":{$alias}";
+							$queryParameterName = isset($resourceAlias) ? ":{$resourceAlias}_{$alias}" : ":{$alias}";
 
 							$queryParameterSpec = new Spec\QueryParameter(
 								$conditionSpec->getField(),
@@ -297,8 +302,8 @@ class PluralRead extends Read {
 								$parsedValue,
 								$parsedValueVariableType
 							);
-
-							$queryParameterSpecs[$alias] = $queryParameterSpec;
+							
+							$queryParameterSpecs[$queryParameterName] = $queryParameterSpec;
 							break;
 					}
 				}
@@ -327,20 +332,17 @@ class PluralRead extends Read {
 						throw new FREST\Exception(FREST\Exception::InvalidType, "Expecting field '{$alias}' to be of type '{$variableTypeString}' but received '{$conditionSpec->getValue()}'");
 					}
 
-					$queryParameterName = ":{$alias}";
-					
+					$queryParameterName = isset($resourceAlias) ? ":{$resourceAlias}_{$alias}" : ":{$alias}";
+
 					$queryParameterSpec = new Spec\QueryParameter(
 						$conditionSpec->getField(),
 						$queryParameterName,
 						$castedValue,
 						$variableType
 					);
-
-					$queryParameterSpecs[$alias] = $queryParameterSpec;
+					
+					$queryParameterSpecs[$queryParameterName] = $queryParameterSpec;
 				}
-
-				$resource = $conditionSpec->getResource();
-				$resourceAlias = $conditionSpec->getResourceAlias();
 				
 				$table = $resource->getTableForField($conditionSpec->getField());
 				$tableKey = isset($resourceAlias) ? "{$table}-{$resourceAlias}" : $table;
