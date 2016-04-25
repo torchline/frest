@@ -437,7 +437,7 @@ abstract class Read extends Request\Request {
 				
 				$subJoinSpecs = $this->generateJoinSpecs($loadedResource, $subReadSettings, $readSetting->getAlias());
 				
-				$field = $loadedResource->getFieldForAlias($alias);
+				$field = $this->resource->getFieldForAlias($alias);
 
 				$joinSpec = new Spec\Join(
 					$resourceAlias,
