@@ -26,6 +26,7 @@ abstract class Read {
 	 * @param string $alias
 	 * @param mixed $setting
 	 * @return Read|NULL
+	 * @throws \FREST\Exception
 	 */
 	public static function fromJSONAliasSetting($alias, $setting) {
 		$readAccess = NULL;
@@ -62,6 +63,17 @@ abstract class Read {
 			else {
 				throw new Exception(Exception::Config, "Invalid 'resources' object in '{$alias}'. Must specifiy 'name' and 'parameters'.");
 			}
+		}
+		else if (isset($setting['function'])) {
+			// TODO: more safety checking for function requiredKeys
+			$requiredKeys = NULL;
+			if (is_array($setting['requiredKeys']) && count($setting['requiredKeys']) > 0) {
+				$requiredKeys = $setting['requiredKeys'];
+			}
+			
+			$functionName = $setting['function'];
+			$default = isset($readAccess['default']) ? (bool)$readAccess['default'] : FALSE;
+			$readSetting = new ComputedRead($alias, $functionName, $requiredKeys, $default);
 		}
 		else { // field
 			$default = isset($readAccess['default']) ? (bool)$readAccess['default'] : TRUE;

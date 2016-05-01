@@ -7,7 +7,13 @@ namespace FREST;
 */
 
 class Config {
-
+	/**
+	 * An ambiguous object that can be passed in to provide a reference to existing framework variables. This is only used when a resource has a function property.
+	 * 
+	 * @var null
+	 */
+	protected $context = NULL;
+	
 	/**
 	 * Forces all http header status codes to be 200 (actual status is supplied within the response)
 	 *
@@ -473,8 +479,20 @@ class Config {
 	{
 		return $this->configArray;
 	}
-	
-	
-	
-	
+
+	/**
+	 * @return mixed
+	 */
+	public function getContext()
+	{
+		return $this->context;
+	}
+
+	/**
+	 * @param mixed $context
+	 */
+	public function setContext($context)
+	{
+		$this->context = $context;
+	}
 }

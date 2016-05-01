@@ -803,7 +803,24 @@ abstract class Read extends Request\Request {
 		
 		// computed aliases
 		$lastComputedReadSettingCount = count($computedReadSettings);
-		
+		$resourceComputer = NULL;
+		if ($lastComputedReadSettingCount > 0) {
+			$frestConfig = $this->getFREST()->getConfig();
+			$formattedResourceName = ucfirst($resource->getName());
+			$resourceDir = $frestConfig->getResourceDirectory();
+			$computerClassPath = "{$resourceDir}/{$formattedResourceName}.php";
+			$computerClassName = "\\FREST\\Computer\\{$formattedResourceName}";
+			
+			/** @noinspection PhpIncludeInspection */
+			require_once $computerClassPath;
+			
+			if (!class_exists($computerClassName, FALSE)) {
+				throw new Exception(Exception::Config, "Class '{$formattedResourceName}' not found in file '{$classPath}'");
+			}
+			
+			$resourceComputer = new $computerClassName($frestConfig->getContext());
+		}
+				
 		$failedComputingSettings = FALSE;
 		while ($lastComputedReadSettingCount > 0) {
 			/** @var Setting\ComputedRead $computedReadSetting */
@@ -812,7 +829,7 @@ abstract class Read extends Request\Request {
 				
 				// determine if all aliases required for this computed alias have been defined 
 				// (should only NOT be set if the required alias is also a computed column and
-				//  hasn't been computed yet)
+				// hasn't been computed yet)
 				$hasAllAliasesRequired = TRUE;
 				$requiredAliases = $computedReadSetting->getRequiredAliases();
 				foreach ($requiredAliases as $requiredAlias) {
@@ -847,16 +864,15 @@ abstract class Read extends Request\Request {
 				}
 
 				$function = $computedReadSetting->getFunction();
-
+				if (!method_exists($resourceComputer, $function)) {
+					throw new FREST\Exception(FREST\Exception::ComputationFunctionMissing, "The function '{$function}' is not defined in resource computer '{$resource->getName()}'");
+				}
+				
 				// keep track of what aliases have been defined for use by other computed aliases
 				unset($computedReadSettings[$alias]);
 				
 				foreach ($objects as &$object) {
-					if (!method_exists($resource, $function)) {
-						throw new FREST\Exception(FREST\Exception::ComputationFunctionMissing, "The Func '{$function}' is not defined in resource '{$resource->getName()}'");
-					}
-					
-					$object->$alias = $resource->$function($object);
+					$object->$alias = $resourceComputer->$function($object);
 				}
 			}
 
