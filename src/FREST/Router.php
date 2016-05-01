@@ -331,7 +331,7 @@ class Router {
 				
 				$this->loadedResources[$resourceName] = $jsonResource;
 			}
-			else if (file_exists($classPath)){
+			else if (FALSE && file_exists($classPath)){ // TODO: deprecate PHP resource classes (should only be JSON + computers)
 				// load the class, check if failed
 				/** @noinspection PhpIncludeInspection */
 				require_once $classPath;
