@@ -239,6 +239,7 @@ abstract class Read extends Request\Request {
 				$requiredAliases = $readSetting->getRequiredAliases();
 				
 				foreach ($requiredAliases as $requiredAlias) {
+					$subAliases = NULL;
 					$requiredAliasFromPartial = self::getHandleAndValues($requiredAlias, $subAliases) ?: $requiredAlias;
 					
 					// TODO: error check required alias partial
@@ -617,7 +618,8 @@ abstract class Read extends Request\Request {
 	 * @param array $readSettings
 	 * @param string $resourceAlias
 	 * 
-	 * @throws FREST\Exception
+	 * @throws \FREST\Exception
+	 * @throws Exception
 	 */
 	protected function parseObjects($resource, &$objects, $readSettings, $resourceAlias = NULL) {					
 		// stores the read Setting that are just an ComputedRead
@@ -833,6 +835,7 @@ abstract class Read extends Request\Request {
 				$hasAllAliasesRequired = TRUE;
 				$requiredAliases = $computedReadSetting->getRequiredAliases();
 				foreach ($requiredAliases as $requiredAlias) {
+					$subAliases = NULL;
 					$requiredAliasFromPartial = self::getHandleAndValues($requiredAlias, $subAliases) ?: $requiredAlias;
 					
 					// TODO: error check required alias partial syntax
@@ -887,7 +890,7 @@ abstract class Read extends Request\Request {
 		}
 		
 		if ($failedComputingSettings) {
-			throw new FREST\Exception(FREST\Exception::Config, 'All computed aliases could not be computed. Check your config and make sure there are no conflicting required field Setting');
+			throw new FREST\Exception(FREST\Exception::Config, 'All computed aliases could not be computed. Check your config and make sure there are no malformed requiredField settings');
 		}
 		
 		$resourceName = $resource->getName();
