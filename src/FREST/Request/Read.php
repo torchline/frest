@@ -141,12 +141,12 @@ abstract class Read extends Request\Request {
 			}
 		}
 		
-		if (count($readSettings) > 0) {
-			$this->addRequiredReadSettings($resource, $readSettings);
-			return $readSettings;
+		if (count($readSettings) == 0) {
+			return NULL;
 		}
-
-		return NULL;
+		
+		$this->addRequiredReadSettings($resource, $readSettings);
+		return $readSettings;
 	}
 
 	/**
@@ -158,6 +158,7 @@ abstract class Read extends Request\Request {
 	 */
 	private function generatePartialReadSetting($resource, $alias, $partialPrefix = NULL) {
 		// check for Setting for partial object alias
+		$definedSubAliases = NULL;
 		$aliasFromPartial = self::getHandleAndValues($alias, $definedSubAliases);
 
 		if (!isset($aliasFromPartial)) {
@@ -238,35 +239,77 @@ abstract class Read extends Request\Request {
 				
 				$requiredAliases = $readSetting->getRequiredAliases();
 				
-				foreach ($requiredAliases as $requiredAlias) {
+				foreach ($requiredAliases as $requiredAliasFull) {
 					$subAliases = NULL;
-					$requiredAliasFromPartial = self::getHandleAndValues($requiredAlias, $subAliases) ?: $requiredAlias;
+					$requiredAlias = self::getHandleAndValues($requiredAliasFull, $subAliases) ?: $requiredAliasFull;
+					// TODO: error check required alias 
+
 					
-					// TODO: error check required alias partial
 					
-					if (!isset($readSettings[$requiredAliasFromPartial]) && !isset($requiredReadSettings[$requiredAliasFromPartial])) {  // if it's not already there
-						$requiredReadSetting = $allReadSettings[$requiredAliasFromPartial];
-						
-						$requiredReadSettings[$requiredAliasFromPartial] = $requiredReadSetting;
-						$this->requiredAliasesAdded[$resourceName][$requiredAliasFromPartial] = $requiredAliasFromPartial;
-						
+					if (!isset($readSettings[$requiredAlias]) && !isset($requiredReadSettings[$requiredAlias])) {  // if it's not already there
+						$requiredReadSetting = $allReadSettings[$requiredAlias];
+
+						$requiredReadSettings[$requiredAlias] = $requiredReadSetting;
+						$this->requiredAliasesAdded[$resourceName][$requiredAlias] = $requiredAlias;
+
 						if (isset($subAliases)) {
 							if (!($requiredReadSetting instanceof Setting\SingularResourceRead)) {
-								throw new FREST\Exception(FREST\Exception::Config, "The required alias '{$requiredAliasFromPartial}' on resource '{$resourceName}' is not a resource and should contain partial object syntax");
+								throw new FREST\Exception(FREST\Exception::Config, "The required alias '{$requiredAlias}' on resource '{$resourceName}' is not a resource and should contain partial object syntax");
 							}
 
 							$loadedResource = $this->getLoadedResource($requiredReadSetting->getResourceName());
 
 							$loadedResourceReadSettings = $loadedResource->getReadSettings();
-							
+
 							// find read Setting for partial syntax that were defined in required alias config
 							$subReadSettings = array();
 							foreach ($subAliases as $subAlias) {
 								$subReadSettings[$subAlias] = $loadedResourceReadSettings[$subAlias];
 							}
 
-							$this->partialSubReadSettings[$requiredAliasFromPartial] = $subReadSettings;
+							$this->partialSubReadSettings[$requiredAlias] = $subReadSettings;
 						}
+					}
+					
+					
+					$requiredReadSetting = isset($readSettings[$requiredAlias]) ? $readSettings[$requiredAlias] : (isset($requiredReadSettings[$requiredAlias]) ? $requiredReadSettings[$requiredAlias] : NULL);
+					if (!isset($requiredReadSetting)) { // generate a new read setting
+						$requiredReadSetting = $allReadSettings[$requiredAlias];
+
+						$requiredReadSettings[$requiredAlias] = $requiredReadSetting;
+						
+						$this->requiredAliasesAdded[$resourceName][$requiredAlias] = $subAliases ?: TRUE;
+					}
+					
+					if (isset($subAliases)) {
+						if (!($requiredReadSetting instanceof Setting\SingularResourceRead)) {
+							throw new FREST\Exception(FREST\Exception::Config, "The required alias '{$requiredAlias}' on resource '{$resourceName}' is not a resource and should not contain partial object syntax");
+						}
+
+						$loadedResource = $this->getLoadedResource($requiredReadSetting->getResourceName());
+						$loadedResourceReadSettings = $loadedResource->getReadSettings();
+
+						if (isset($this->partialSubReadSettings[$requiredAlias])) { // add another required subalias
+							$subAliasesAdded = array();
+							foreach ($subAliases as $subAlias) {
+								if (!isset($this->partialSubReadSettings[$requiredAlias][$subAlias])) {
+									$this->partialSubReadSettings[$requiredAlias][$subAlias] = $loadedResourceReadSettings[$subAlias];
+									$subAliasesAdded[] = $subAlias;
+								}
+							}
+							
+							foreach ($subAliasesAdded as $subAlias) {
+								$this->requiredAliasesAdded[$resourceName][$requiredAlias][] = $subAlias;
+							}							
+						}
+						else {
+							// find read Setting for partial syntax that were defined in required alias config
+							$subReadSettings = array();
+							foreach ($subAliases as $subAlias) {
+								$subReadSettings[$subAlias] = $loadedResourceReadSettings[$subAlias];
+							}
+							$this->partialSubReadSettings[$requiredAlias] = $subReadSettings;
+						}						
 					}
 				}
 			}
@@ -280,7 +323,7 @@ abstract class Read extends Request\Request {
 
 					if (!isset($readSettings[$injectedAlias]) && !isset($requiredReadSettings[$injectedAlias])) { // if it's not already there
 						$requiredReadSettings[$injectedAlias] = $allReadSettings[$injectedAlias];
-						$this->requiredAliasesAdded[$resourceName][$injectedAlias] = $injectedAlias;
+						$this->requiredAliasesAdded[$resourceName][$injectedAlias] = TRUE; // used to have value of $injectedAlias
 					}
 				}
 			}
@@ -288,7 +331,6 @@ abstract class Read extends Request\Request {
 
 		if (count($requiredReadSettings) > 0) {
 			$readSettings = array_merge($readSettings, $requiredReadSettings);
-
 			$this->addRequiredReadSettings($resource, $readSettings);
 		}
 	}
@@ -314,12 +356,10 @@ abstract class Read extends Request\Request {
 
 				$alias = $readSetting->getAlias();
 				$partialKey = isset($resourceAlias) ? "{$resourceAlias}.{$alias}" : $alias;
+				
 				if (isset($this->partialSubReadSettings[$partialKey])) {
 					$subReadSettings = $this->partialSubReadSettings[$partialKey];
 					$this->addRequiredReadSettings($loadedResource, $subReadSettings);
-				}
-				else {
-					$subReadSettings = $this->getLoadedResourceReadSettings($loadedResource, $readSetting);
 				}
 								
 				$subResourceAlias = isset($resourceAlias) ? "{$resourceAlias}-{$alias}" : $alias;
@@ -900,9 +940,24 @@ abstract class Read extends Request\Request {
 				$alias = $readSetting->getAlias();
 
 				// remove property if added only by requirement of other properties
-				if (isset($this->requiredAliasesAdded[$resourceName][$alias])) {
-					foreach ($objects as &$object) {
-						unset($object->$alias);
+				$subAliasesToRemove = isset($this->requiredAliasesAdded[$resourceName][$alias]) ? $this->requiredAliasesAdded[$resourceName][$alias] : NULL;
+				if (isset($subAliasesToRemove)) {
+					if (is_array($subAliasesToRemove)) {
+						foreach ($objects as &$object) {
+							foreach ($subAliasesToRemove as $subAlias) {
+								unset($object->$alias->$subAlias);
+							}
+
+							$isEmpty = count((array)$object->$alias) == 0;
+							if ($isEmpty) {
+								unset($object->$alias);
+							}
+						}
+					}
+					else {
+						foreach ($objects as &$object) {
+							unset($object->$alias);
+						}
 					}
 				}
 			}
