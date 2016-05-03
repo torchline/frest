@@ -313,6 +313,12 @@ abstract class Read extends Request\Request {
 					}
 				}
 			}
+			else if ($readSetting instanceof Setting\SingularResourceRead) {
+				// these lines might also need to be added for Setting\PluralResourceRead as well
+				$loadedResource = $this->getLoadedResource($readSetting->getResourceName());
+				$subReadSettings = $this->getLoadedResourceReadSettings($loadedResource, $readSetting);
+				$this->partialSubReadSettings[$readSetting->getAlias()] = $subReadSettings;
+			}
 			else if ($readSetting instanceof Setting\PluralResourceRead) {
 				$injectedRequiredAliases = $readSetting->getRequiredAliases();
 
