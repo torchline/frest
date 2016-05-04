@@ -314,10 +314,14 @@ abstract class Read extends Request\Request {
 				}
 			}
 			else if ($readSetting instanceof Setting\SingularResourceRead) {
+				// add default sub read settings if needed
 				// these lines might also need to be added for Setting\PluralResourceRead as well
-				$loadedResource = $this->getLoadedResource($readSetting->getResourceName());
-				$subReadSettings = $this->getLoadedResourceReadSettings($loadedResource, $readSetting);
-				$this->partialSubReadSettings[$readSetting->getAlias()] = $subReadSettings;
+				$alias = $readSetting->getAlias();
+				if (!isset($this->partialSubReadSettings[$alias])) {
+					$loadedResource = $this->getLoadedResource($readSetting->getResourceName());
+					$subReadSettings = $this->getLoadedResourceReadSettings($loadedResource, $readSetting);
+					$this->partialSubReadSettings[$alias] = $subReadSettings;
+				}				
 			}
 			else if ($readSetting instanceof Setting\PluralResourceRead) {
 				$injectedRequiredAliases = $readSetting->getRequiredAliases();
@@ -362,7 +366,8 @@ abstract class Read extends Request\Request {
 
 				$alias = $readSetting->getAlias();
 				$partialKey = isset($resourceAlias) ? "{$resourceAlias}.{$alias}" : $alias;
-				
+
+				$subReadSettings = NULL;
 				if (isset($this->partialSubReadSettings[$partialKey])) {
 					$subReadSettings = $this->partialSubReadSettings[$partialKey];
 					$this->addRequiredReadSettings($loadedResource, $subReadSettings);
