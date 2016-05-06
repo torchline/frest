@@ -3,9 +3,9 @@
  * Created by Brad Walker on 5/3/16 at 18:02
 */
 
-namespace FREST\Request;
+namespace FREST\Resource\Request;
 
-class Read extends Request
+class Read
 {
 	/**
 	 * @var string $resourceName
@@ -17,14 +17,9 @@ class Read extends Request
 	 * 
 	 * Example:
 	 * [ 
-	 *   id: 1, 
-	 *   name: 1, 
-	 *   category: [
-	 *     name: 1
-	 *     subcategory: [
-	 *       name: 1
-	 *     ]
-	 *   ] 
+	 *   id,
+	 *   name,
+	 *   category{name}
 	 * ]
 	 * 
 	 * @var array $fields
@@ -35,8 +30,8 @@ class Read extends Request
 	 * 
 	 * Example:
 	 * [
-	 *   name: ["=", "basketball"],
-	 *   category.subcategory.name: ["like", "spor~"]
+	 *   name: "basketball",
+	 *   category.subcategory.name: "like(spor~)"
 	 * ]
 	 * 
 	 * @var array $filters
@@ -85,6 +80,14 @@ class Read extends Request
 		$this->offset = $offset;
 	}
 
+	/**
+	 * @return string
+	 */
+	public function getResourceName()
+	{
+		return $this->resourceName;
+	}
+	
 	/**
 	 * @return array
 	 */
